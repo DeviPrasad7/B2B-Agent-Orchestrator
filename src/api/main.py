@@ -3,9 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes import config, prospects, hitl, triggers
 from services.trigger_monitor import TriggerMonitor
+from agent.graph import setup_graph
+from agent.utils import Toolbox, MemoryStore
 
 # Global trigger monitor instance
 trigger_monitor = TriggerMonitor()
+
+# Initialize LangGraph workflow dependencies
+toolbox = Toolbox()
+memory_store = MemoryStore()
+setup_graph(toolbox, memory_store)
 
 app = FastAPI(title="ICP Agent API", version="1.0.0")
 

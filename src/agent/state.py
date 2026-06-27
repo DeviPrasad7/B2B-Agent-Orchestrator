@@ -33,6 +33,9 @@ class GraphState(TypedDict):
     prospect_id: str
     current_trigger_event: str
     
+    # Config loaded from database (icp, persona, thresholds)
+    config: dict[str, Any]
+    
     # Accumulated context data (firmographics, tech stack, raw signals)
     data: Annotated[dict[str, Any], add_dict]
     

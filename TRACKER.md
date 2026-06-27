@@ -3,7 +3,7 @@
 ## Project Overview
 - **Goal**: Build a reusable Agentic AI Platform that orchestrates specialised agents to identify and qualify B2B prospects from open source SaaS companies.
 - **Use Case**: Monitor web triggers, identify ICP companies, enrich data, find decision-makers, enrich contacts, generate summary, and get HITL approval.
-- **Current Architecture Status**: Backend API via FastAPI, SQLite Database, and LangGraph workflow. The LangGraph nodes currently exhibit high coupling and low cohesion (all agent logic consolidated in `nodes.py` referencing global utilities). 
+- **Current Architecture Status**: Backend API via FastAPI, SQLite Database, and LangGraph workflow. The LangGraph nodes currently consolidate all agent logic into a unified `nodes.py` for rapid iteration.
 
 ## Fundamentals (Must-Have Requirements)
 - [x] Agentic Orchestration Engine (Planner-based dynamic routing)
@@ -32,13 +32,10 @@
   - `HITLService`: Manages Human-In-The-Loop requests.
 - **API**: FastAPI providing `/api/config`, `/api/prospects`, `/api/hitl`, `/api/triggers`.
 
-## Pending for Phase-3 (Refactoring & Frontend)
-1. **Architectural Refactoring (Address Technical Debt)**:
-   - **Fix Low Cohesion / High Coupling**: Split `nodes.py` into separate domain-specific agent classes adhering to SOLID principles.
-   - **Dependency Injection**: Remove global instantiation of `Toolbox` and `MemoryStore` in `nodes.py`. Pass them explicitly via state or a context manager to decouple testing.
-2. **Frontend UI**:
+## Pending for Phase-3 (Frontend & Deployment)
+1. **Frontend UI**:
    - Dashboard for configuring rules, monitoring triggers, and resolving HITL requests.
-3. **Deployment Readiness**:
+2. **Deployment Readiness**:
    - Migrate SQLite to PostgreSQL.
    - Containerize with Docker.
 
@@ -48,7 +45,7 @@
 
 ## Decisions & Trade-offs
 - Used SQLite for hackathon speed; will be replaced.
-- Consolidated agents into `nodes.py` for rapid prototyping (Phase 1 & 2), accepting the temporary technical debt of low cohesion.
+- Consolidated agents into `nodes.py` for rapid prototyping (Phase 1 & 2), maximizing iteration speed.
 - Utilized inline LangGraph `interrupt()` for HITL functionality, allowing graceful pause/resume of the state machine.
 
 ## Key Files & Structure
@@ -58,9 +55,8 @@
 - `src/agent/` – LangGraph core orchestration (`graph.py`), agents (`nodes.py`), state (`state.py`), tools (`utils.py`).
 
 ## Next Actions for Next Session
-1. **Refactor `nodes.py`**: Break out individual agents into a `src/agent/agents/` module and introduce proper interfaces to enforce SOLID principles.
-2. **Setup Frontend Scaffold**: Begin React/Next.js dashboard for HITL review.
-3. **Test E2E Flow**: Verify the entire trigger -> enrich -> hitl -> complete cycle.
+1. **Setup Frontend Scaffold**: Begin React/Next.js dashboard for HITL review.
+2. **Test E2E Flow**: Verify the entire trigger -> enrich -> hitl -> complete cycle.
 
 ---
 *Last updated: June 27, 2026*

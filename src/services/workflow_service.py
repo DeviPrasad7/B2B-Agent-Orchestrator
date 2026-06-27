@@ -1,6 +1,8 @@
 import asyncio
 from agent.graph import app
 from agent.state import GraphState
+from models.database import async_session
+from services.config_service import ConfigService
 import structlog
 
 logger = structlog.get_logger()
@@ -13,11 +15,23 @@ class WorkflowService:
         """
         Submits a prospect state to the LangGraph workflow asynchronously.
         """
-        async def run_workflow():
+        async with async_session() as session:
+            config_service = ConfigService(session)
+            icp = await config_service.get_icp()
+            persona = await config_service.get_persona()
+            thresholds = await config_service.get_thresholds()
+            
+            state["config"] = {
+                "icp": icp.dict() if icp else {},
+                "persona": persona.dict() if persona else {},
+                "thresholds": thresholds.dict() if thresholds else {}
+            }
+            
+        async def run_workflow(configured_state: GraphState):
             logger.info("Starting workflow for prospect", thread_id=thread_id)
             config = {"configurable": {"thread_id": thread_id}}
             try:
-                await app.ainvoke(state, config=config)
+                await app.ainvoke(configured_state, config=config)
                 
                 # Check if the graph paused due to an interrupt
                 state_snapshot = await app.aget_state(config)
@@ -37,7 +51,7 @@ class WorkflowService:
             except Exception as e:
                 logger.error("Workflow failed", thread_id=thread_id, error=str(e))
 
-        asyncio.create_task(run_workflow())
+        asyncio.create_task(run_workflow(state))
         return thread_id
 
     @staticmethod
