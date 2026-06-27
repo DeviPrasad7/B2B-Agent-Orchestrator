@@ -1,73 +1,59 @@
 # Project Tracker – Agentic SaaS Platform for B2B Open Source SaaS Customer Discovery
 
-## Project Overview
-- **Goal**: Build a reusable Agentic AI Platform that orchestrates specialised agents to identify and qualify B2B prospects from open source SaaS companies.
-- **Use Case**: Monitor web triggers, identify ICP companies, enrich data, find decision-makers, enrich contacts, generate summary, and get HITL approval.
-- **Current Architecture Status**: Backend API via FastAPI, SQLite Database, and LangGraph workflow. The LangGraph nodes currently consolidate all agent logic into a unified `nodes.py` for rapid iteration.
+## Project Overview & Problem Statement
+**Goal**: Design and build a reusable Agentic AI Platform that enables users to create, orchestrate, and deploy intelligent AI agents. The platform must be demonstrated by solving a real-world B2B customer discovery and prospect intelligence use case (identifying ICP Open Source SaaS companies).
 
-## Fundamentals (Must-Have Requirements)
-- [x] Agentic Orchestration Engine (Planner-based dynamic routing)
-- [x] Specialised Agent Pool (monitor, score, tech stack, enricher, competitor, cross-validator, summarizer, HITL, output dispatcher)
-- [x] Reusable Agent/Tool Interface (IAgent, IToolbox)
-- [x] Shared Contextual Memory (initial in-memory, now migrating to DB)
-- [x] Configurable Trigger Monitoring (phase-2)
-- [x] ICP Identification (configurable)
-- [x] Validation & Enrichment (partially done)
-- [x] Persona-Based Decision-Maker Discovery (new agents pending)
-- [x] Contact Enrichment (new agents pending)
-- [x] Actionable Summary Generation (done)
-- [x] HITL Approval Gate (integrated via interrupt)
-- [x] User-Editable Business Rules (phase-1 config service)
-- [x] Pluggable Agent Framework (done via IAgent)
-- [ ] Intuitive UI (backend only – API provides)
+**Core Challenge Requirements:**
+1. **Dynamic Planner-Based Orchestration**: The orchestrator must not be a hard-coded DAG, but dynamically decide agent invocation based on state/input.
+2. **Reusable Agent & Tool Architecture**: Agents and tools must adhere to standardized contracts for easy swapping/upgrading.
+3. **Shared Contextual Memory**: A centralized, persistent memory layer to retain context across interactions, prevent redundant work, and support historical references.
+4. **End-to-End Workflow**:
+   - Monitor web/market sources for configurable triggers.
+   - Apply editable ICP criteria to filter companies.
+   - Validate and enrich firmographics.
+   - Identify decision-makers via configurable target personas.
+   - Enrich contacts (email, phone, LinkedIn).
+   - Generate an actionable summary with recommended next actions.
+   - **HITL (Human-in-the-Loop) Approval Gate**: Pause for explicit user approval before finalizing recommendations.
+5. **Configurability & Extensibility**: User-editable business rules (ICP, thresholds, personas). Pluggable framework for adding new workflows/agents without altering core orchestration.
+6. **User Experience**: Intuitive UI (web/CLI/desktop) for configuring rules, monitoring progress, and handling HITL requests.
+7. **Deliverables**: 5-minute Demo, 5-minute Architecture Walkthrough, GitHub Repository.
 
-## Current Status (End of Phase-2)
-- **Database**: SQLite (`app.db`) with SQLAlchemy models: `Prospect`, `HITLRequest`, `Config`, `TriggerSource`, `ProcessedEvent`.
-- **State Management**: LangGraph checkpointer uses `SqliteSaver` via `checkpoints.db`.
-- **Workflow & Agents**: Implemented `GraphState` with parallel nodes (monitor/score -> tech_stack/enrich -> competitor/validator -> persona/contact -> summarizer -> HITL -> output). All nodes are currently implemented in `src/agent/nodes.py`.
+## Current Architecture & Codebase Status (Deep Analysis)
+- **Frameworks**: FastAPI (Backend API), LangGraph (Workflow Orchestration), SQLAlchemy (Database ORM).
+- **Database**: Currently using SQLite (`app.db` for app state, `checkpoints.db` for LangGraph memory). **[BLOCKER FOR GCP]** Cloud Run requires stateless architecture; SQLite will cause data loss on container restarts. Must migrate to PostgreSQL (e.g., Supabase/Neon) or Firestore.
+- **State Management**: Uses `GraphState` (TypedDict) with `Annotated` reducers. LangGraph checkpointer `AsyncSqliteSaver` is active.
+- **Orchestration Engine**: Implemented via `graph.py`. Currently uses a static StateGraph with conditional edges. To fully satisfy the "Dynamic Planner" requirement, the routing logic needs an LLM-driven planning agent rather than hard-coded conditional paths.
+- **Agent Architecture**: Monolithic `nodes.py` was successfully split into individual files (`src/agent/agents/`). Dependencies are injected via `functools.partial`.
 - **Services**: 
   - `ConfigService`: CRUD for ICP, personas.
-  - `MemoryService`: DB-backed memory store.
-  - `WorkflowService`: Wraps LangGraph invocation asynchronously.
+  - `MemoryService`: DB-backed memory store. *BUG FOUND*: `hitl_service.py` incorrectly instantiates `MemoryService` with an active session rather than a session factory.
+  - `WorkflowService`: Wraps LangGraph invocation.
   - `HITLService`: Manages Human-In-The-Loop requests.
-- **API**: FastAPI providing `/api/config`, `/api/prospects`, `/api/hitl`, `/api/triggers`.
+- **API**: FastAPI providing endpoints `/api/config`, `/api/prospects`, `/api/hitl`, `/api/triggers`.
+- **Deployment**: `Dockerfile` is present but uses `python app.py` with `reload=True`. Needs production-grade `uvicorn` configuration. `docker-compose.yml` mounts local volumes.
 
-## Phase 2.5 – Agent Layer Refactoring (COMPLETED)
+## Fundamentals (Must-Have Requirements) Checklist
+- [x] **Specialised Agent Pool**: monitor, score, tech_stack, enricher, competitor, validator, contact_finder, summarizer.
+- [x] **Shared Contextual Memory**: Implemented via `MemoryService` and LangGraph Checkpointer.
+- [x] **Configurable Trigger Monitoring**: Implemented in `monitor.py` and `trigger_monitor.py`.
+- [x] **ICP Identification**: `score_node` applies config.
+- [x] **Validation & Enrichment**: `enricher_node` and `cross_validator_node`.
+- [x] **Persona-Based Decision-Maker Discovery**: `persona_matcher_node` and `contact_finder_node`.
+- [x] **Actionable Summary Generation**: `summarizer_node`.
+- [x] **HITL Approval Gate**: Integrated via `interrupt()` in `hitl_gateway_node`.
+- [x] **User-Editable Business Rules**: Via ConfigService API.
+- [x] **Pluggable Agent Framework**: Agents are decoupled via DI, but `graph.py` requires manual edge wiring.
+- [-] **Reusable Agent/Tool Interface**: `Toolbox` acts as a facade, but currently violates Dependency Inversion by instantiating concrete services internally.
+- [-] **Agentic Orchestration Engine**: Basic LangGraph routing exists, but needs LLM planner to be truly "dynamic".
+- [ ] **Intuitive UI**: Missing. Backend API only.
+- [ ] **GCP Production Readiness**: Fails due to SQLite and dev-server configuration.
 
-- [x] Split `nodes.py` into individual agent modules under `src/agent/agents/`.
-- [x] Injected dependencies (`toolbox`, `memory`) into all agent functions.
-- [x] Added `config` field to `GraphState` to pre‑load ICP/persona/thresholds.
-- [x] Modified `WorkflowService` to attach configuration to state before graph execution.
-- [x] Removed all direct database imports from agent modules.
-- [x] Updated `graph.py` to use `functools.partial` for dependency injection.
-- [x] Deleted `src/agent/nodes.py`.
-- [x] Verified graph compiles and runs without errors.
-
-## Pending for Phase-3 (Frontend & Deployment)
-1. **Frontend UI**:
-   - Dashboard for configuring rules, monitoring triggers, and resolving HITL requests.
-2. **Deployment Readiness**:
-   - Migrate SQLite to PostgreSQL.
-   - Containerize with Docker.
-
-## Data Flow & State Structure
-- **State Bus (`GraphState`)**: Uses `Annotated` reducers to merge `data` dictionaries and `validation_notes` lists. Contains `prospect_id`, `confidence_score`, `has_conflict`, etc.
-- **Orchestration**: `graph.py` defines the state machine with conditional routing logic (e.g., `route_post_validation`, `route_post_hitl`).
-
-## Decisions & Trade-offs
-- Used SQLite for hackathon speed; will be replaced.
-- Consolidated agents into `nodes.py` for rapid prototyping (Phase 1 & 2), maximizing iteration speed.
-- Utilized inline LangGraph `interrupt()` for HITL functionality, allowing graceful pause/resume of the state machine.
-
-## Key Files & Structure
-- `src/models/` – SQLAlchemy schemas (`database.py`, `schemas.py`).
-- `src/services/` – Business logic and database interactions.
-- `src/api/routes/` – FastAPI endpoints.
-- `src/agent/` – LangGraph core orchestration (`graph.py`), agents (`nodes.py`), state (`state.py`), tools (`utils.py`).
-
-## Next Actions for Next Session
-1. **Setup Frontend Scaffold**: Begin React/Next.js dashboard for HITL review.
-2. **Test E2E Flow**: Verify the entire trigger -> enrich -> hitl -> complete cycle.
+## Actionable Next Steps (See implementation_plan.md)
+1. **GCP Free Tier Readiness**: Migrate SQLite to PostgreSQL/Firestore; update Dockerfile for production Uvicorn.
+2. **SOLID Refactoring**: Fix Dependency Inversion in `Toolbox`; fix `MemoryService` initialization bug in `hitl_service.py`.
+3. **Dynamic Planner Upgrade**: Introduce an LLM-driven Supervisor node in LangGraph to dynamically select agents, replacing hard-coded conditional edges.
+4. **Frontend Implementation**: Build a lightweight React or Streamlit UI for the HITL dashboard.
 
 ---
 *Last updated: June 27, 2026*

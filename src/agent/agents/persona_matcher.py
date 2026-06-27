@@ -2,7 +2,8 @@ import time
 from typing import Any
 from ..state import GraphState
 from ..utils import Toolbox
-from services.memory_service import MemoryService, MonitoringService
+from services.memory_service import MemoryService
+from ..utils import MonitoringService
 
 async def persona_matcher_node(
     state: GraphState,

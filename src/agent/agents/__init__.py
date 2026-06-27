@@ -10,8 +10,10 @@ from .summarizer import summarizer_node
 from .hitl_gateway import hitl_gateway_node
 from .output_dispatcher import output_dispatcher_node
 from .consolidation import consolidation_node
+from .planner import planner_node
 
 __all__ = [
+    "planner_node",
     "monitor_node",
     "score_node",
     "tech_stack_detector_node",

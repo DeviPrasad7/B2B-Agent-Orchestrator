@@ -10,12 +10,8 @@ from agent.state import GraphState
 
 router = APIRouter(prefix="/api/prospects", tags=["prospects"])
 
-async def get_session() -> AsyncSession:
-    async with async_session() as session:
-        yield session
-
-def get_memory_service(session: AsyncSession = Depends(get_session)) -> MemoryService:
-    return MemoryService(session)
+def get_memory_service() -> MemoryService:
+    return MemoryService(async_session)
 
 @router.get("", response_model=List[ProspectSummary])
 async def list_prospects(

@@ -1,0 +1,42 @@
+# Version control
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+venv/
+.venv/
+
+# SQLite databases (no longer used)
+*.db
+
+# Environment files (secrets injected at runtime)
+.env
+.env.*
+!.env.example
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation and planning (not needed in container)
+Plan/
+docs/
+*.md
+!README.md
+
+# Tests (not needed in production container)
+tests/
+
+# Frontend (separate deployment)
+frontend/
+
+# Docker artifacts
+docker-compose.yml
+Dockerfile
+.dockerignore

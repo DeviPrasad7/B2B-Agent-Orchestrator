@@ -4,9 +4,14 @@ from sqlalchemy import Column, String, JSON, DateTime, Integer, Boolean, Foreign
 import uuid
 from datetime import datetime, timezone
 
-DATABASE_URL = "sqlite+aiosqlite:///./app.db"
+from core.settings import settings
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+engine = create_async_engine(
+    settings.get_async_db_url(),
+    echo=settings.APP_ENV == "development",
+    pool_size=5,
+    max_overflow=10,
+)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 Base = declarative_base()
@@ -61,3 +66,13 @@ class ProcessedEvent(Base):
     event_hash = Column(String, primary_key=True)
     prospect_id = Column(String, nullable=False)
     processed_at = Column(DateTime, default=get_utc_now)
+
+
+async def init_db():
+    """Create all tables if they don't already exist.
+
+    Safe to call on every startup – uses ``checkfirst=True`` internally
+    (the default for ``create_all``).
+    """
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)

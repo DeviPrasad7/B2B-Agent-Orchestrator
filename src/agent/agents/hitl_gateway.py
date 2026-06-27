@@ -3,7 +3,8 @@ from typing import Any
 from langgraph.types import interrupt
 from ..state import GraphState, ValidationNote
 from ..utils import Toolbox
-from services.memory_service import MemoryService, MonitoringService
+from services.memory_service import MemoryService
+from ..utils import MonitoringService
 
 async def hitl_gateway_node(
     state: GraphState,

@@ -1,5 +1,5 @@
 import yaml
-import os
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from models.database import Config
@@ -37,8 +37,8 @@ class ConfigService:
             }
         }
         
-        default_file = "default_icp.yaml"
-        if os.path.exists(default_file):
+        default_file = Path("default_icp.yaml")
+        if default_file.exists():
             with open(default_file, 'r') as f:
                 loaded = yaml.safe_load(f)
                 if loaded:

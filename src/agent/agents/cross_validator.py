@@ -2,7 +2,8 @@ import time
 from typing import Any
 from ..state import GraphState, ValidationNote
 from ..utils import Toolbox
-from services.memory_service import MemoryService, MonitoringService
+from services.memory_service import MemoryService
+from ..utils import MonitoringService
 
 async def cross_validator_node(
     state: GraphState,

@@ -1,0 +1,9 @@
+# This directory holds Alembic migration revision scripts.
+#
+# To generate the initial migration after setting up PostgreSQL:
+#
+#   alembic revision --autogenerate -m "Initial schema"
+#
+# Then apply it:
+#
+#   alembic upgrade head

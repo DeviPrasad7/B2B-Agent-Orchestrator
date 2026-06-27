@@ -1,13 +1,8 @@
 import time
-import os
 from enum import Enum
 from typing import Any, Optional
 from pydantic import BaseModel
-import httpx
-from bs4 import BeautifulSoup
 import structlog
-from langchain_openai import ChatOpenAI
-from langchain_core.messages import SystemMessage, HumanMessage
 
 logger = structlog.get_logger()
 
@@ -118,86 +113,49 @@ class CircuitBreaker:
             self.service_states[service_name] = CircuitBreakerState.OPEN
 
 # ==============================================================================
-# Toolbox
+# Toolbox (Facade)
 # ==============================================================================
 class Toolbox:
-    """Facade for external tool interactions."""
-    def __init__(self):
+    """Facade for external tool interactions. Aggregates internal services."""
+    def __init__(self, llm_service=None, scraping_service=None, enrichment_service=None):
+        if llm_service is None:
+            from services.llm_service import LLMService
+            llm_service = LLMService()
+        if scraping_service is None:
+            from services.scraping_service import ScrapingService
+            scraping_service = ScrapingService()
+        if enrichment_service is None:
+            from services.enrichment_service import EnrichmentService
+            enrichment_service = EnrichmentService()
+
         self.circuit_breaker = CircuitBreaker()
         self.event_store = [] # In-memory event store for MVP
-        self._llm = None
         
-    @property
-    def llm(self):
-        if not self._llm:
-            api_key = os.getenv("OPENAI_API_KEY", "")
-            if not api_key:
-                logger.warning("OPENAI_API_KEY not found in environment, LLM calls will fail.")
-            self._llm = ChatOpenAI(model="gpt-4o", temperature=0.0)
-        return self._llm
+        # Sub-services
+        self._llm_service = llm_service
+        self._scraping_service = scraping_service
+        self._enrichment_service = enrichment_service
         
     async def fetch_webpage(self, url: str, timeout_sec: int = 10) -> WebPage:
-        start_time = time.time()
-        try:
-            async with httpx.AsyncClient(timeout=timeout_sec) as client:
-                response = await client.get(url)
-                response.raise_for_status()
-                fetch_time = int((time.time() - start_time) * 1000)
-                return WebPage(
-                    url=url, 
-                    htmlContent=response.text, 
-                    statusCode=response.status_code, 
-                    fetchTimeMs=fetch_time
-                )
-        except httpx.TimeoutException:
-            raise TimeoutError(f"Timeout fetching {url}")
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
-                raise RateLimitError(f"Rate limited fetching {url}")
-            raise ServiceUnavailableError(f"HTTP error {e.response.status_code} for {url}")
-        except Exception as e:
-            raise ServiceUnavailableError(f"Failed to fetch {url}: {e}")
+        return await self._scraping_service.fetch_webpage(url, timeout_sec)
             
     async def fetch_crunchbase(self, company_name: str) -> CompanyProfile:
-        # Mock logic, as Crunchbase API requires paid access
-        # In a real scenario, this would use httpx to call Crunchbase
-        return CompanyProfile(name=company_name, employeeCount=150, revenue="10M", industries=["Software"])
+        return await self._enrichment_service.fetch_crunchbase(company_name)
         
     async def scrape_linkedin(self, company_name: str) -> dict:
-        # Mock logic for LinkedIn scraping
-        return {"location": "San Francisco, CA"}
+        return await self._enrichment_service.scrape_linkedin(company_name)
         
     def detect_tech_stack(self, html_content: str, domain: str) -> list[TechStackEntry]:
-        # Mock API logic
-        soup = BeautifulSoup(html_content, "html.parser")
-        text = soup.get_text().lower()
-        scripts = " ".join([script.get("src", "").lower() for script in soup.find_all("script")])
-        
-        stack = []
-        if "react" in scripts or "react" in text:
-            stack.append(TechStackEntry(technology="React", category="Frontend", confidence=0.8, source="HTML"))
-        if "django" in text:
-            stack.append(TechStackEntry(technology="Django", category="Backend", confidence=0.7, source="HTML"))
-        if "aws" in text or "amazonaws" in text:
-            stack.append(TechStackEntry(technology="AWS", category="Cloud", confidence=0.9, source="HTML"))
-            
-        return stack
+        return self._scraping_service.detect_tech_stack(html_content, domain)
         
     def scrape_careers_page(self, url: str) -> list[JobPosting]:
-        # Mock logic
-        return [JobPosting(title="Engineer", department="Engineering", url=url, postedDate="2026-06-27")]
+        return self._scraping_service.scrape_careers_page(url)
         
     def validate_email(self, email: str) -> EmailValidationResult:
-        # Mock logic
-        return EmailValidationResult(email=email, isValid=True, reason="Valid syntax")
+        return self._enrichment_service.validate_email(email)
         
     def get_competitor_info(self, tech_tag: str) -> Optional[CompetitorMapping]:
-        # Mock local mapping
-        if tech_tag.lower() == "react":
-            return CompetitorMapping(technology=tech_tag, competitors=["Vue", "Angular"], painPoints={"Vue": "Learning curve"})
-        if tech_tag.lower() == "aws":
-             return CompetitorMapping(technology=tech_tag, competitors=["Azure", "GCP"], painPoints={"Azure": "Complexity"})
-        return None
+        return self._enrichment_service.get_competitor_info(tech_tag)
         
     def emit_event(self, event_type: str, payload: Any) -> None:
         logger.info("Emitting event", event_type=event_type, payload=payload)
@@ -208,54 +166,22 @@ class Toolbox:
         logger.info("Sending webhook", url=url)
         
     async def generate_text(self, prompt: str, fallback: str) -> str:
-        try:
-            messages = [SystemMessage(content="You are a prospect summarizer AI."), HumanMessage(content=prompt)]
-            response = await self.llm.ainvoke(messages)
-            return response.content
-        except Exception as e:
-            logger.error("LLM generation failed", error=str(e))
-            return fallback
+        return await self._llm_service.generate_text(prompt, fallback)
 
-    # Phase-2 New Methods
     async def find_company_employees(self, company_name: str) -> list[dict]:
-        """Mock method for finding employees via Crunchbase/LinkedIn."""
-        logger.info("Finding employees for company", company_name=company_name)
-        # In reality this uses HTTPX. Returning mock data matching typical titles.
-        return [
-            {"name": "Alice Smith", "title": "VP of Engineering", "linkedin_url": "http://linkedin.com/in/alicesmith"},
-            {"name": "Bob Jones", "title": "Software Engineer", "linkedin_url": "http://linkedin.com/in/bobjones"},
-            {"name": "Carol White", "title": "CTO", "linkedin_url": "http://linkedin.com/in/carolwhite"}
-        ]
+        return await self._enrichment_service.find_company_employees(company_name)
 
     async def enrich_contact(self, person_name: str, domain: str) -> dict:
-        """Mock method for finding contact info via Hunter.io/Clearbit."""
-        logger.info("Enriching contact", person_name=person_name, domain=domain)
-        first_name = person_name.split()[0].lower()
-        return {
-            "email": f"{first_name}@{domain}",
-            "phone": "+1-555-0100",
-            "linkedin": f"http://linkedin.com/in/{first_name}",
-            "confidence_score": 0.85
-        }
+        return await self._enrichment_service.enrich_contact(person_name, domain)
 
     async def fetch_rss_entries(self, url: str) -> list[dict]:
-        """Mock method for RSS feeds."""
-        logger.info("Fetching RSS feed", url=url)
-        return [
-            {"title": "Acme Corp raises $50M", "summary": "Acme Corp announced series B...", "link": "http://news/1"}
-        ]
+        return await self._enrichment_service.fetch_rss_entries(url)
 
     async def fetch_news_api(self, keywords: str) -> list[dict]:
-        """Mock method for NewsAPI."""
-        logger.info("Fetching News API", keywords=keywords)
-        return [
-            {"title": "Tech startup GlobalScale launches new product", "summary": "GlobalScale is hiring...", "link": "http://news/2"}
-        ]
+        return await self._enrichment_service.fetch_news_api(keywords)
 
     async def fetch_jobs(self, company: str) -> list[dict]:
-        """Mock method for Job board scraping."""
-        logger.info("Fetching Jobs", company=company)
-        return [{"title": "Senior Engineer", "department": "Engineering"}]
+        return await self._enrichment_service.fetch_jobs(company)
 
 # ==============================================================================
 # Emulated MonitoringService

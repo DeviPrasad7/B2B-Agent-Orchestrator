@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: icp-postgres
+    environment:
+      POSTGRES_USER: agent
+      POSTGRES_PASSWORD: agent
+      POSTGRES_DB: agentic
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agent -d agentic"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  icp-agent-api:
+    build: .
+    container_name: icp-agent-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src          # hot‑reload source in dev
+      - ./migrations:/app/migrations
+      - ./alembic.ini:/app/alembic.ini
+    environment:
+      - APP_ENV=development
+      - DATABASE_URL=postgresql://agent:agent@postgres:5432/agentic
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai}
+      - LLM_MODEL=${LLM_MODEL:-gpt-4o}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

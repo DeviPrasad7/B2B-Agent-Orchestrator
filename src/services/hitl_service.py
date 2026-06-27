@@ -8,26 +8,25 @@ from models.database import async_session
 class HITLService:
     @staticmethod
     async def create_request(prospect_id: str, interrupt_data: dict) -> uuid.UUID:
-        async with async_session() as session:
-            memory_service = MemoryService(session)
-            summary = interrupt_data.get("reason", "Manual review requested")
-            request_id = await memory_service.create_hitl_request(prospect_id, summary)
-            return request_id
+        memory_service = MemoryService(async_session)
+        summary = interrupt_data.get("reason", "Manual review requested")
+        request_id = await memory_service.create_hitl_request(prospect_id, summary)
+        return request_id
 
     @staticmethod
     async def resolve_request(request_id: str, decision: str, corrections: Optional[dict]) -> None:
+        memory_service = MemoryService(async_session)
+        
+        try:
+            rid = uuid.UUID(request_id)
+        except ValueError:
+            raise ValueError("Invalid request ID")
+            
+        # Need to get prospect_id to resume graph
+        from models.database import HITLRequest, Prospect
+        from sqlalchemy import select
+        
         async with async_session() as session:
-            memory_service = MemoryService(session)
-            
-            try:
-                rid = uuid.UUID(request_id)
-            except ValueError:
-                raise ValueError("Invalid request ID")
-                
-            # Need to get prospect_id to resume graph
-            from models.database import HITLRequest, Prospect
-            from sqlalchemy import select
-            
             result = await session.execute(
                 select(HITLRequest).where(HITLRequest.id == rid)
             )

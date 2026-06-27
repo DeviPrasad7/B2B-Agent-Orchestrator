@@ -1,2 +1,24 @@
 Plan/
 __pycache__/
+*.pyc
+*.pyo
+
+# SQLite databases (legacy – no longer used)
+*.db
+
+# Environment secrets
+.env
+
+# Virtual environments
+venv/
+.venv/
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

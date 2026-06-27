@@ -2,8 +2,7 @@ import operator
 from typing import TypedDict, Annotated, Any
 from pydantic import BaseModel
 
-# Core definitions
-class ValidationNote(BaseModel):
+class ValidationNote(TypedDict):
     level: str
     message: str
     source_agent: str
@@ -52,3 +51,4 @@ class GraphState(TypedDict):
     errors: Annotated[list[str], add_list]
     has_conflict: bool
     tech_detection_status: str
+    next_node: str
