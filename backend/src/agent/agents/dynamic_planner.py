@@ -67,38 +67,50 @@ class DynamicPlannerNode(AgentNode):
             logger.error("Failed to fetch custom agents", error=str(e))
             
         # Exclude already executed agents
-        available_agents = [a for a in agents if a["name"] not in executed and a["name"] != "dynamic_agent_executor"]
+        available_agents = []
+        for a in agents:
+            if a["name"] not in executed and a["name"] != "dynamic_agent_executor":
+                # Truncate description to save tokens
+                desc = a.get("description", "")
+                if len(desc) > 80:
+                    desc = desc[:77] + "..."
+                available_agents.append({"name": a["name"], "desc": desc})
         
         if not available_agents:
             logger.info("DynamicPlanner: No more available agents, ending workflow.", prospect_id=prospect_id)
             return {"executed_agents": ["dynamic_planner_node"], "next_node": "__end__"}
             
+        # Intelligently truncate context data to preserve semantic meaning while saving thousands of tokens
+        def truncate_data(d: Any, max_len: int = 150) -> Any:
+            if isinstance(d, dict):
+                return {k: truncate_data(v, max_len) for k, v in d.items()}
+            elif isinstance(d, list):
+                return [truncate_data(v, max_len) for v in d[:3]] # Keep max 3 items
+            elif isinstance(d, str):
+                return d if len(d) <= max_len else d[:max_len] + "..."
+            return d
+            
+        context_data = truncate_data(state.get("data", {}))
+        
         prompt = f"""
-You are the dynamic planner orchestrating a B2B sales prospect enrichment workflow.
+You are a B2B sales workflow planner.
+Status: {overall_status}
+Executed: {list(executed)}
+Data Gathered: {json.dumps(context_data, default=str)}
 
-Current State:
-- Prospect ID: {prospect_id}
-- Company Name: {state.get("data", {}).get("company_name")}
-- Overall Status: {overall_status}
-- Executed Agents: {list(executed)}
-- Data gathered so far: {json.dumps(state.get("data", {}), default=str)}
-
-Available Agents:
-{json.dumps(available_agents, indent=2)}
+Agents:
+{json.dumps(available_agents)}
 
 Rules:
-- Choose the single best next agent from the Available Agents list to execute next.
-- If we have all required firmographic and tech stack data, proceed to 'cross_validator_node', then 'persona_matcher_node', then 'contact_finder_node'.
-- If we have all data, choose 'summarizer_node'.
-- If 'summarizer_node' is executed, choose 'hitl_gateway_node'.
-- If 'hitl_gateway_node' is executed, choose 'output_dispatcher_node'.
-- Reply ONLY with a JSON object.
+- Choose the best next agent based on missing data.
+- Once firmographic & tech stack data exist, do 'cross_validator_node' -> 'persona_matcher_node' -> 'contact_finder_node'.
+- Once all data is gathered, choose 'summarizer_node'.
+- After 'summarizer_node', choose 'hitl_gateway_node'.
+- After 'hitl_gateway_node', choose 'output_dispatcher_node'.
+- Return ONLY JSON.
 
-Output format:
-{{
-    "reasoning": "Brief explanation of why this agent was chosen based on missing data or next logical step.",
-    "next_node": "agent_name_here"
-}}
+Format:
+{{"reasoning":"Brief reason","next_node":"agent_name"}}
 """
         
         # 3. Call LLM
@@ -106,7 +118,8 @@ Output format:
             llm_response = await self.toolbox.generate_text(
                 prompt=prompt,
                 fallback='{"next_node": "fallback", "reasoning": "fallback"}',
-                require_json=True
+                require_json=True,
+                strategy="fast"
             )
             
             # Clean response of markdown backticks

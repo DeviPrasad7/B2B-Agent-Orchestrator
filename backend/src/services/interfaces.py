@@ -25,7 +25,7 @@ class LLMServiceProtocol(Protocol):
     """Contract for any LLM text-generation backend."""
 
     async def generate_text(
-        self, prompt: str, fallback: str, require_json: bool = False
+        self, prompt: str, fallback: str, require_json: bool = False, strategy: str = "heavy"
     ) -> str:
         """Generate text from a prompt. Falls back to ``fallback`` on error."""
         ...

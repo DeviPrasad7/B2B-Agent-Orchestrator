@@ -118,8 +118,8 @@ class Toolbox:
         # Fire and forget mock – integrate a real HTTP client in production
         logger.info("Sending webhook", url=url)
 
-    async def generate_text(self, prompt: str, fallback: str, require_json: bool = False) -> str:
-        return await self._llm_service.generate_text(prompt, fallback, require_json=require_json)
+    async def generate_text(self, prompt: str, fallback: str, require_json: bool = False, strategy: str = "heavy") -> str:
+        return await self._llm_service.generate_text(prompt, fallback, require_json=require_json, strategy=strategy)
 
     async def find_company_employees(self, company_name: str) -> list[dict]:
         return await self._enrichment_service.find_company_employees(company_name)

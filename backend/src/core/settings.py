@@ -30,7 +30,14 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "openai"
     LLM_MODEL: str = "gpt-4o"
     LLM_API_KEY: str  # required – no default
-
+    LLM_API_KEY_2: Optional[str] = None
+    LLM_API_KEY_3: Optional[str] = None
+    LLM_API_KEY_4: Optional[str] = None
+    LLM_API_KEY_5: Optional[str] = None
+    
+    # ── Groq specific (Fast Routing) ─────────────────────────────────────
+    GROQ_API_KEYS: Optional[str] = None  # comma-separated keys
+    GROQ_MODELS: Optional[str] = None    # comma-separated models
     # ── Optional service keys ────────────────────────────────────────────
     SCRAPER_API_KEY: Optional[str] = None
     ENRICHMENT_API_KEY: Optional[str] = None
