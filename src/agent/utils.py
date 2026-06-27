@@ -116,32 +116,51 @@ class CircuitBreaker:
         
         if state == CircuitBreakerState.HALF_OPEN or count >= self.failure_threshold:
             self.service_states[service_name] = CircuitBreakerState.OPEN
-            self.last_failure_times[service_name] = time.time()
+# ==============================================================================
+# MemoryStore
+# ==============================================================================
+from services.memory_service import MemoryService
+from models.database import async_session
+import asyncio
 
-# ==============================================================================
-# MemoryStore (DEPRECATED: Use src/services/memory_service.py instead)
-# ==============================================================================
-# class MemoryStore:
-#     \"\"\"In-memory store for prospects, events, and state across graph executions.\"\"\"
-#     def __init__(self):
-#         self.processed_events: dict[str, str] = {}
-#         self.prospect_states: dict[str, Any] = {}
-#         
-#     def has_event_been_processed(self, event_hash: str) -> bool:
-#         return event_hash in self.processed_events
-#         
-#     def mark_event_processed(self, event_hash: str, prospect_id: str) -> None:
-#         self.processed_events[event_hash] = prospect_id
-#         
-#     def save_prospect_state(self, prospect_id: str, context: Any) -> None:
-#         self.prospect_states[prospect_id] = context
-#         
-#     def load_prospect_state(self, prospect_id: str) -> Optional[Any]:
-#         return self.prospect_states.get(prospect_id)
-#         
-#     def rollback_prospect_state(self, prospect_id: str) -> None:
-#         if prospect_id in self.prospect_states:
-#             del self.prospect_states[prospect_id]
+class MemoryStore:
+    """Wrapper that delegates to the database-backed MemoryService."""
+    def __init__(self):
+        pass
+
+    async def _get_service(self):
+        # We create a brief local session and service to perform the action
+        async with async_session() as session:
+            service = MemoryService(session)
+            yield service
+            
+    def _run_async(self, coro):
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(coro)
+        except RuntimeError:
+            asyncio.run(coro)
+
+    def mark_event_processed(self, event_hash: str, prospect_id: str) -> None:
+        async def _run():
+            async with async_session() as session:
+                service = MemoryService(session)
+                await service.mark_event_processed(event_hash, prospect_id)
+        self._run_async(_run())
+        
+    def save_prospect_state(self, prospect_id: str, context: Any) -> None:
+        async def _run():
+            async with async_session() as session:
+                service = MemoryService(session)
+                await service.save_prospect_state(context)
+        self._run_async(_run())
+        
+    def rollback_prospect_state(self, prospect_id: str) -> None:
+        async def _run():
+            async with async_session() as session:
+                service = MemoryService(session)
+                await service.rollback_prospect_state(prospect_id)
+        self._run_async(_run())
 
 # ==============================================================================
 # Toolbox
@@ -194,7 +213,7 @@ class Toolbox:
         return {"location": "San Francisco, CA"}
         
     def detect_tech_stack(self, html_content: str, domain: str) -> list[TechStackEntry]:
-        # TODO: Replace with actual API call (e.g. BuiltWith) when available
+        # Mock API logic
         soup = BeautifulSoup(html_content, "html.parser")
         text = soup.get_text().lower()
         scripts = " ".join([script.get("src", "").lower() for script in soup.find_all("script")])
@@ -241,6 +260,47 @@ class Toolbox:
         except Exception as e:
             logger.error("LLM generation failed", error=str(e))
             return fallback
+
+    # Phase-2 New Methods
+    async def find_company_employees(self, company_name: str) -> list[dict]:
+        """Mock method for finding employees via Crunchbase/LinkedIn."""
+        logger.info("Finding employees for company", company_name=company_name)
+        # In reality this uses HTTPX. Returning mock data matching typical titles.
+        return [
+            {"name": "Alice Smith", "title": "VP of Engineering", "linkedin_url": "http://linkedin.com/in/alicesmith"},
+            {"name": "Bob Jones", "title": "Software Engineer", "linkedin_url": "http://linkedin.com/in/bobjones"},
+            {"name": "Carol White", "title": "CTO", "linkedin_url": "http://linkedin.com/in/carolwhite"}
+        ]
+
+    async def enrich_contact(self, person_name: str, domain: str) -> dict:
+        """Mock method for finding contact info via Hunter.io/Clearbit."""
+        logger.info("Enriching contact", person_name=person_name, domain=domain)
+        first_name = person_name.split()[0].lower()
+        return {
+            "email": f"{first_name}@{domain}",
+            "phone": "+1-555-0100",
+            "linkedin": f"http://linkedin.com/in/{first_name}",
+            "confidence_score": 0.85
+        }
+
+    async def fetch_rss_entries(self, url: str) -> list[dict]:
+        """Mock method for RSS feeds."""
+        logger.info("Fetching RSS feed", url=url)
+        return [
+            {"title": "Acme Corp raises $50M", "summary": "Acme Corp announced series B...", "link": "http://news/1"}
+        ]
+
+    async def fetch_news_api(self, keywords: str) -> list[dict]:
+        """Mock method for NewsAPI."""
+        logger.info("Fetching News API", keywords=keywords)
+        return [
+            {"title": "Tech startup GlobalScale launches new product", "summary": "GlobalScale is hiring...", "link": "http://news/2"}
+        ]
+
+    async def fetch_jobs(self, company: str) -> list[dict]:
+        """Mock method for Job board scraping."""
+        logger.info("Fetching Jobs", company=company)
+        return [{"title": "Senior Engineer", "department": "Engineering"}]
 
 # ==============================================================================
 # Emulated MonitoringService

@@ -1,7 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base
-from sqlalchemy import Column, String, JSON, DateTime, Integer, Boolean, ForeignKey
-from sqlalchemy.dialects.sqlite import UUID as SQLiteUUID
+from sqlalchemy import Column, String, JSON, DateTime, Integer, Boolean, ForeignKey, Uuid
 import uuid
 from datetime import datetime, timezone
 
@@ -18,7 +17,7 @@ def get_utc_now():
 class Prospect(Base):
     __tablename__ = "prospects"
 
-    id = Column(SQLiteUUID, primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
     company_name = Column(String, nullable=False)
     website = Column(String, nullable=True)
     status = Column(String, nullable=False, default="PENDING")
@@ -30,8 +29,8 @@ class Prospect(Base):
 class HITLRequest(Base):
     __tablename__ = "hitl_requests"
 
-    id = Column(SQLiteUUID, primary_key=True, default=uuid.uuid4)
-    prospect_id = Column(SQLiteUUID, ForeignKey("prospects.id"), nullable=False)
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    prospect_id = Column(Uuid, ForeignKey("prospects.id"), nullable=False)
     summary = Column(String, nullable=False)
     decision = Column(String, nullable=True)
     corrections = Column(JSON, nullable=True)
@@ -48,7 +47,7 @@ class Config(Base):
 class TriggerSource(Base):
     __tablename__ = "trigger_sources"
 
-    id = Column(SQLiteUUID, primary_key=True, default=uuid.uuid4)
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
     type = Column(String, nullable=False)
     url = Column(String, nullable=True)
     interval_seconds = Column(Integer, nullable=False, default=3600)

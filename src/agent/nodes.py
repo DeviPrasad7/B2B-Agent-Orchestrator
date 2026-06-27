@@ -167,6 +167,68 @@ async def cross_validator_node(state: GraphState) -> dict[str, Any]:
         "validation_notes": notes
     }
 
+async def persona_matcher_node(state: GraphState) -> dict[str, Any]:
+    prospect_id = state.get("prospect_id", "unknown")
+    company_name = state.get("data", {}).get("company_name")
+    
+    if not company_name:
+        return {"executed_agents": ["persona_matcher_node"]}
+        
+    try:
+        from models.database import async_session
+        from services.config_service import ConfigService
+        async with async_session() as session:
+            config_service = ConfigService(session)
+            persona_def = await config_service.get_persona()
+            
+        employees = await toolbox.find_company_employees(company_name)
+        
+        # Simple mock filtering logic based on persona titles
+        target_titles = [t.lower() for t in persona_def.job_titles]
+        matched = []
+        for emp in employees:
+            emp_title = emp.get("title", "").lower()
+            if any(t in emp_title for t in target_titles):
+                matched.append({
+                    "name": emp.get("name"),
+                    "title": emp.get("title"),
+                    "linkedin_url": emp.get("linkedin_url"),
+                    "confidence": 0.9
+                })
+                
+        return {
+            "executed_agents": ["persona_matcher_node"],
+            "data": {"personas": matched[:3]}
+        }
+    except Exception as e:
+        MonitoringService.log_error(prospect_id, f"PERSONA_ERROR: {str(e)}")
+        return {"executed_agents": ["persona_matcher_node"], "errors": [f"persona_matcher_node: {str(e)}"]}
+
+async def contact_finder_node(state: GraphState) -> dict[str, Any]:
+    prospect_id = state.get("prospect_id", "unknown")
+    personas = state.get("data", {}).get("personas", [])
+    website_url = state.get("data", {}).get("website_url", "")
+    
+    domain = website_url.replace("https://", "").replace("http://", "").split("/")[0] if website_url else "example.com"
+    
+    if not personas:
+        return {"executed_agents": ["contact_finder_node"]}
+        
+    try:
+        contacts = []
+        for persona in personas:
+            contact = await toolbox.enrich_contact(persona["name"], domain)
+            contact["persona_name"] = persona["name"]
+            contacts.append(contact)
+            
+        return {
+            "executed_agents": ["contact_finder_node"],
+            "data": {"contacts": contacts}
+        }
+    except Exception as e:
+        MonitoringService.log_error(prospect_id, f"CONTACT_ERROR: {str(e)}")
+        return {"executed_agents": ["contact_finder_node"], "errors": [f"contact_finder_node: {str(e)}"]}
+
 async def summarizer_node(state: GraphState) -> dict[str, Any]:
     prospect_id = state.get("prospect_id", "unknown")
     try:

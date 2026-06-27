@@ -13,7 +13,9 @@ from agent.nodes import (
     cross_validator_node,
     summarizer_node,
     output_dispatcher_node,
-    consolidation_node
+    consolidation_node,
+    persona_matcher_node,
+    contact_finder_node
 )
 
 def route_post_scoring(state: GraphState) -> Literal["__end__", "parallel_enrichment_start"]:
@@ -27,11 +29,16 @@ def route_post_enrichment(state: GraphState) -> Literal["competitor_intel_node",
         return "competitor_intel_node"
     return "cross_validator_node"
 
-def route_post_validation(state: GraphState) -> Literal["hitl_gateway_node", "summarizer_node"]:
+def route_post_validation(state: GraphState) -> Literal["hitl_gateway_node", "persona_matcher_node", "summarizer_node"]:
     confidence = state.get("confidence_score", 100.0)
     conflict = state.get("has_conflict", False)
     if confidence < 40.0 or conflict:
         return "hitl_gateway_node"
+        
+    company_name = state.get("data", {}).get("company_name")
+    if company_name:
+        return "persona_matcher_node"
+        
     return "summarizer_node"
     
 def route_post_hitl(state: GraphState) -> Literal["output_dispatcher_node", "__end__"]:
@@ -55,6 +62,8 @@ workflow.add_node("post_enrichment_consolidation", consolidation_node)
 
 workflow.add_node("competitor_intel_node", competitor_intel_node)
 workflow.add_node("cross_validator_node", cross_validator_node)
+workflow.add_node("persona_matcher_node", persona_matcher_node)
+workflow.add_node("contact_finder_node", contact_finder_node)
 workflow.add_node("summarizer_node", summarizer_node)
 workflow.add_node("output_dispatcher_node", output_dispatcher_node)
 
@@ -97,15 +106,19 @@ workflow.add_conditional_edges(
 )
 workflow.add_edge("competitor_intel_node", "cross_validator_node")
 
-# Phase 7: Confidence Check & Summarization
+# Phase 7: Confidence Check, Persona Matching & Summarization
 workflow.add_conditional_edges(
     "cross_validator_node",
     route_post_validation,
     {
         "hitl_gateway_node": "hitl_gateway_node",
+        "persona_matcher_node": "persona_matcher_node",
         "summarizer_node": "summarizer_node"
     }
 )
+
+workflow.add_edge("persona_matcher_node", "contact_finder_node")
+workflow.add_edge("contact_finder_node", "summarizer_node")
 
 # After summarization, ALWAYS route to HITL
 workflow.add_edge("summarizer_node", "hitl_gateway_node")

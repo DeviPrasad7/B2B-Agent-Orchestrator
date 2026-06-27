@@ -67,3 +67,15 @@ async def delete_source(source_id: str, session: AsyncSession = Depends(get_sess
     await session.delete(source)
     await session.commit()
     return {"status": "success"}
+
+@router.post("/start")
+async def start_monitor():
+    from api.main import trigger_monitor
+    trigger_monitor.start()
+    return {"status": "success", "message": "TriggerMonitor started"}
+
+@router.post("/stop")
+async def stop_monitor():
+    from api.main import trigger_monitor
+    trigger_monitor.stop()
+    return {"status": "success", "message": "TriggerMonitor stopped"}
