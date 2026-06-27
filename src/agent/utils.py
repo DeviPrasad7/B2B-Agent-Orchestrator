@@ -2,9 +2,7 @@ import time
 from enum import Enum
 from typing import Any, Optional
 from pydantic import BaseModel
-import structlog
-
-logger = structlog.get_logger()
+from core.logging import logger
 
 # ==============================================================================
 # Custom Exceptions

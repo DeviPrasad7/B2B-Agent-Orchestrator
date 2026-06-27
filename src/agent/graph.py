@@ -67,6 +67,13 @@ async def get_app(toolbox, memory_service, config: dict):
     
     # PostgreSQL-backed checkpointer for durable HITL state
     connection_string = settings.get_checkpoint_db_url()
+    
+    # Run setup with an autocommit connection to allow CREATE INDEX CONCURRENTLY
+    import psycopg
+    async with await psycopg.AsyncConnection.connect(connection_string, autocommit=True) as setup_conn:
+        setup_checkpointer = AsyncPostgresSaver(setup_conn)
+        await setup_checkpointer.setup()
+
     pool = AsyncConnectionPool(
         conninfo=connection_string,
         max_size=5,
@@ -75,8 +82,6 @@ async def get_app(toolbox, memory_service, config: dict):
     await pool.open()
 
     checkpointer = AsyncPostgresSaver(pool)
-    # Create checkpoint tables if they don't exist (idempotent)
-    await checkpointer.setup()
 
     # Compile the workflow - NO interrupt_before since we use inline interrupt()
     app = workflow.compile(

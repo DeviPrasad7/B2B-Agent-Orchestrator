@@ -16,28 +16,32 @@ class CrossValidatorNode(AgentNode):
 
     async def __call__(self, state: GraphState) -> dict[str, Any]:
         prospect_id = state.get("prospect_id", "unknown")
-        firmographics = state.get("data", {}).get("firmographics", {})
-        
-        has_conflict = False
-        notes = []
-        
-        # In memory cross-validation logic
-        if not firmographics.get("name") or not firmographics.get("employeeCount"):
-            notes.append(ValidationNote(
-                level="WARN",
-                message="Missing key firmographics (name or employeeCount)",
-                source_agent="cross_validator",
-                timestamp=time.time()
-            ))
+        try:
+            firmographics = state.get("data", {}).get("firmographics", {})
             
-        confidence = 0.70 if notes else 0.95
-        if notes:
-            has_conflict = True
-            MonitoringService.log_warning(prospect_id, "Validation issues found")
-        
-        return {
-            "executed_agents": ["cross_validator_node"],
-            "confidence_score": confidence,
-            "has_conflict": has_conflict,
-            "validation_notes": notes
-        }
+            has_conflict = False
+            notes = []
+            
+            # In memory cross-validation logic
+            if not firmographics.get("name") or not firmographics.get("employeeCount"):
+                notes.append(ValidationNote(
+                    level="WARN",
+                    message="Missing key firmographics (name or employeeCount)",
+                    source_agent="cross_validator",
+                    timestamp=time.time()
+                ))
+                
+            confidence = 0.70 if notes else 0.95
+            if notes:
+                has_conflict = True
+                MonitoringService.log_warning(prospect_id, "Validation issues found")
+            
+            return {
+                "executed_agents": ["cross_validator_node"],
+                "confidence_score": confidence,
+                "has_conflict": has_conflict,
+                "validation_notes": notes
+            }
+        except Exception as e:
+            MonitoringService.log_error(prospect_id, f"CROSS_VALIDATOR_ERROR: {str(e)}")
+            return {"executed_agents": ["cross_validator_node"], "errors": [f"cross_validator_node: {str(e)}"]}

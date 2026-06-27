@@ -1,9 +1,10 @@
 import json
+import re
 from typing import Any
 from ..state import GraphState
 from ..utils import Toolbox
 from services.memory_service import MemoryService
-from ..utils import MonitoringService
+from core.logging import logger
 from ..base import AgentNode
 from ..registry import AgentRegistry
 
@@ -14,16 +15,70 @@ class PlannerNode(AgentNode):
         self.config = config
         self.registry = registry
 
+    def _deterministic_fallback(self, state: dict) -> str:
+        data = state.get("data", {})
+        executed = state.get("executed_agents", [])
+        
+        has_company = bool(data.get('company_name'))
+        has_scored = bool(data.get('scored_signals'))
+        has_enriched = bool(data.get('firmographics'))
+        has_tech = 'tech_stack_detector_node' in executed
+        has_validated = 'cross_validator_node' in executed
+        has_personas = bool(data.get('personas'))
+        has_contacts = bool(data.get('contacts'))
+        has_summary = bool(data.get('summary_object'))
+        
+        if not has_scored:
+            return "score_node"
+        elif not has_enriched:
+            return "enricher_node"
+        elif not has_tech:
+            return "tech_stack_detector_node"
+        elif not has_validated:
+            return "cross_validator_node"
+        elif not has_personas:
+            return "persona_matcher_node"
+        elif not has_contacts:
+            return "contact_finder_node"
+        elif not has_summary:
+            return "summarizer_node"
+        else:
+            return "hitl_gateway_node"
+
     async def __call__(self, state: GraphState) -> dict[str, Any]:
         prospect_id = state.get("prospect_id", "unknown")
         executed_agents = state.get("executed_agents", [])
         overall_status = state.get("overall_status", "PENDING")
+        errors = state.get("errors", [])
+        retry_counts = state.get("retry_counts", {})
         
-        if overall_status in ["NO_ACTION", "REJECTED", "TIMEOUT", "APPROVED", "COMPLETED"]:
+        logger.info(f"Planner evaluating next step", extra={"prospect_id": prospect_id, "state": overall_status})
+        
+        if overall_status in ["NO_ACTION", "REJECTED", "TIMEOUT", "COMPLETED"]:
             return {"next_node": "__end__"}
             
+        if overall_status == "APPROVED":
+            return {"executed_agents": ["planner_node"], "next_node": "output_dispatcher_node"}
+            
+        # Error handling & retries
+        if executed_agents:
+            last_agent = executed_agents[-1]
+            if last_agent != "planner_node" and errors:
+                # Did the last agent raise an error?
+                if any(e.startswith(last_agent) for e in errors[-1:]):
+                    max_retries = self.config.get("MAX_RETRIES", 3)
+                    current_retries = retry_counts.get(last_agent, 0)
+                    if current_retries < max_retries:
+                        logger.warning(f"Retrying agent {last_agent}", extra={"attempt": current_retries + 1, "prospect_id": prospect_id})
+                        return {
+                            "executed_agents": ["planner_node"],
+                            "next_node": last_agent,
+                            "retry_counts": {last_agent: current_retries + 1}
+                        }
+                    else:
+                        logger.error(f"Max retries reached for {last_agent}, skipping", extra={"prospect_id": prospect_id})
+            
         available_agents = self.registry.list_agents()
-        
         agent_descriptions = []
         for name in available_agents:
             desc = self.registry.get_description(name)
@@ -43,26 +98,35 @@ Current State Summary:
 - Overall Status: {overall_status}
 - Has Company Name: {bool(state.get('data', {}).get('company_name'))}
 - Has Summary: {bool(state.get('data', {}).get('summary_object'))}
+- Has Firmographics: {bool(state.get('data', {}).get('firmographics'))}
+- Recent Errors: {errors[-2:] if errors else 'None'}
+- Retry Counts: {retry_counts}
 
-Output ONLY a JSON object with a single key "next_node" containing the exact name of the next agent to run. If the workflow is complete, output "__end__".
+Output ONLY a structured JSON object with the following keys:
+1. "next_node": The exact name of the next agent to run. If the workflow is complete, output "__end__".
+2. "reasoning": A brief explanation of why this agent was chosen.
+3. "params": (Optional) Any specific parameters to pass.
 """
         
-        fallback = '{"next_node": "__end__"}'
+        fallback_json = '{"next_node": "__end__", "reasoning": "Fallback"}'
         
         try:
-            response = await self.toolbox.generate_text(prompt, fallback)
-            import re
+            response = await self.toolbox.generate_text(prompt, fallback_json)
             json_match = re.search(r'\{.*\}', response, re.DOTALL)
             if json_match:
                 data = json.loads(json_match.group(0))
                 next_node = data.get("next_node", "__end__")
+                logger.info("LLM Planner decision", extra={"decision": data, "prospect_id": prospect_id})
             else:
-                next_node = "__end__"
+                next_node = self._deterministic_fallback(state)
+                logger.warning("LLM Planner returned invalid JSON, using fallback", extra={"next_node": next_node})
                 
             if next_node not in available_agents and next_node != "__end__":
-                next_node = "__end__"
+                next_node = self._deterministic_fallback(state)
                 
             return {"executed_agents": ["planner_node"], "next_node": next_node}
+            
         except Exception as e:
-            MonitoringService.log_error(prospect_id, f"PLANNER_ERROR: {str(e)}")
-            return {"next_node": "hitl_gateway_node"} # Fallback to human if planner fails
+            logger.error(f"Planner LLM failed: {str(e)}", extra={"prospect_id": prospect_id})
+            next_node = self._deterministic_fallback(state)
+            return {"executed_agents": ["planner_node"], "next_node": next_node}

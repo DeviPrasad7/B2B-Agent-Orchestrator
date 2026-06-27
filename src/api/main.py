@@ -10,6 +10,11 @@ from services.memory_service import MemoryService
 from models.database import async_session, init_db
 from core.settings import settings
 from services.config_service import ConfigService
+from core.logging import setup_logging
+from core.settings import settings
+
+# Initialize logging at startup
+setup_logging(settings.LOG_LEVEL)
 
 # Global trigger monitor instance
 trigger_monitor = TriggerMonitor()
