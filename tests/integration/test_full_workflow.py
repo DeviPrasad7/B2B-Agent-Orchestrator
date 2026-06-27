@@ -32,8 +32,8 @@ async def test_full_workflow_execution(mock_toolbox, memory_service, sample_comp
 
     mock_toolbox.generate_text.side_effect = llm_routing_side_effect
     
-    graph_app, _ = await get_app(mock_toolbox, memory_service, config_dict)
-    WorkflowService.set_app(graph_app)
+    graph_app, pool = await get_app(mock_toolbox, memory_service, config_dict)
+    ws = WorkflowService(graph_app)
     
     import asyncio
     import uuid
@@ -48,10 +48,12 @@ async def test_full_workflow_execution(mock_toolbox, memory_service, sample_comp
         "overall_status": "PENDING"
     }
     await memory_service.save_prospect_state(state)
-    thread_id = await WorkflowService.submit_prospect(state, pid)
+    thread_id = await ws.submit_prospect(state, pid)
     
     # Wait for completion
     await asyncio.sleep(0.5)
+    if pool:
+        await pool.close()
     
     assert thread_id is not None
     

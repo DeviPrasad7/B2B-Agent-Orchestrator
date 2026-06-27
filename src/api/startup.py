@@ -13,7 +13,7 @@ from services.config_service import ConfigService
 from services.hitl_service import HITLService
 from services.workflow_service import WorkflowService
 
-async def _initialize_magic_seed(memory_service: MemoryService):
+async def _initialize_magic_seed(memory_service: MemoryService, workflow_service: WorkflowService):
     existing_prospects = await memory_service.list_prospects({"limit": 1})
     if not existing_prospects:
         magic_id = str(uuid.uuid4())
@@ -42,7 +42,7 @@ async def _initialize_magic_seed(memory_service: MemoryService):
             "simulate_failure": False
         }
         await memory_service.save_prospect_state(magic_state)
-        await WorkflowService.submit_prospect(magic_state, thread_id=magic_id)
+        await workflow_service.submit_prospect(magic_state, thread_id=magic_id)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -77,18 +77,22 @@ async def lifespan(app: FastAPI):
     app.state.checkpointer_pool = pool
     app.state.hitl_service = HITLService(memory_service)
     
+    # Inject graph_app into WorkflowService first, as TriggerMonitor needs it
+    app.state.workflow_service = WorkflowService(graph_app, app.state.hitl_service)
+    app.state.hitl_service.workflow_service = app.state.workflow_service
+    
     # Instantiate TriggerMonitor and auto-start background polling
-    app.state.trigger_monitor = TriggerMonitor(toolbox)
+    app.state.trigger_monitor = TriggerMonitor(toolbox, app.state.workflow_service)
     app.state.trigger_monitor.start()
 
     # Make toolbox accessible to endpoints (e.g. events)
     app.state.toolbox = toolbox
 
-    # Inject graph_app into WorkflowService
-    app.state.workflow_service = WorkflowService(graph_app, app.state.hitl_service)
+    # Make toolbox accessible to endpoints (e.g. events)
+    app.state.toolbox = toolbox
 
     # Insert Magic Seed Prospect if empty
-    await _initialize_magic_seed(memory_service)
+    await _initialize_magic_seed(memory_service, app.state.workflow_service)
 
     try:
         yield

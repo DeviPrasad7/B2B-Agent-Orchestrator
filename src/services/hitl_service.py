@@ -22,6 +22,7 @@ from models.database import get_utc_now
 class HITLService:
     def __init__(self, memory_service: MemoryService):
         self.memory_service = memory_service
+        self.workflow_service = None
 
     async def create_request(self, prospect_id: str, interrupt_data: dict) -> uuid.UUID:
         """Create a new HITL request record and mark the prospect as pending human review."""
@@ -80,4 +81,7 @@ class HITLService:
         # Resume the LangGraph workflow outside the DB session so the commit
         # is durable before we trigger async graph execution.
         if workflow_thread_id:
-            await WorkflowService.resume_with_hitl(workflow_thread_id, decision, corrections)
+            if self.workflow_service:
+                await self.workflow_service.resume_with_hitl(workflow_thread_id, decision, corrections)
+            else:
+                raise RuntimeError("workflow_service is not configured on HITLService")

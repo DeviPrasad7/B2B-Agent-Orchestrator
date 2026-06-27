@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from typing import List, Optional
 from uuid import uuid4
 from models.schemas import ProspectSummary, ProspectDetail
@@ -54,6 +54,7 @@ class CreateProspectRequest(BaseModel):
 @router.post("")
 async def create_prospect(
     req: CreateProspectRequest, 
+    request: Request,
     memory_service: MemoryService = Depends(get_memory_service)
 ):
     prospect_id = str(uuid4())
@@ -79,6 +80,6 @@ async def create_prospect(
     await memory_service.save_prospect_state(state)
     
     # Submit to workflow
-    await WorkflowService.submit_prospect(state, thread_id=prospect_id)
+    await request.app.state.workflow_service.submit_prospect(state, thread_id=prospect_id)
     
     return {"status": "success", "prospect_id": prospect_id}

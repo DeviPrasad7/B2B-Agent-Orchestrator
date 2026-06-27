@@ -132,22 +132,10 @@ Output format:
                 prospect_id=prospect_id
             )
             # 4. Fallback: deterministic linear sequence based on executed_agents
-            sequence = [
-                "monitor_node",
-                "tech_stack_detector_node",
-                "enricher_node",
-                "competitor_intel_node",
-                "cross_validator_node",
-                "persona_matcher_node",
-                "contact_finder_node",
-                "score_node",
-                "summarizer_node",
-                "hitl_gateway_node",
-                "output_dispatcher_node"
-            ]
+            sequence = [a["name"] for a in agents]
             
             for node in sequence:
-                if node not in executed and node in [a["name"] for a in agents]:
+                if node not in executed:
                     return {"executed_agents": ["dynamic_planner_node"], "next_node": node}
             
             return {"executed_agents": ["dynamic_planner_node"], "next_node": "__end__"}

@@ -9,9 +9,9 @@ def mock_graph_app():
     return app
 
 @pytest.mark.asyncio
-async def test_start_workflow(workflow_service, mock_graph_app, memory_service, sample_company_data):
+async def test_start_workflow(mock_graph_app, memory_service, sample_company_data):
     # Setup mock
-    workflow_service.set_app(mock_graph_app)
+    ws = WorkflowService(mock_graph_app)
     
     state = {
         "prospect_id": "test-123",
@@ -26,7 +26,7 @@ async def test_start_workflow(workflow_service, mock_graph_app, memory_service, 
     pid = str(uuid.uuid4())
     state["prospect_id"] = pid
     await memory_service.save_prospect_state(state)
-    thread_id = await workflow_service.submit_prospect(state, pid)
+    thread_id = await ws.submit_prospect(state, pid)
     await asyncio.sleep(0.1) # Let the background task run
     
     assert thread_id is not None
@@ -36,12 +36,12 @@ async def test_start_workflow(workflow_service, mock_graph_app, memory_service, 
     assert prospect is not None
 
 @pytest.mark.asyncio
-async def test_resume_workflow(workflow_service, mock_graph_app):
-    workflow_service.set_app(mock_graph_app)
+async def test_resume_workflow(mock_graph_app):
+    ws = WorkflowService(mock_graph_app)
     import uuid
     thread_id = str(uuid.uuid4())
     import asyncio
-    await workflow_service.resume_with_hitl(thread_id, "APPROVED", {"score": 100})
+    await ws.resume_with_hitl(thread_id, "APPROVED", {"score": 100})
     await asyncio.sleep(0.1) # Let background task run
     
     mock_graph_app.ainvoke.assert_called_once()

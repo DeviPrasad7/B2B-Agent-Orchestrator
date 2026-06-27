@@ -13,5 +13,5 @@ class ConsolidationNode(AgentNode):
         self.config = config
 
     async def __call__(self, state: GraphState) -> dict[str, Any]:
-        """Node used strictly to converge parallel flows."""
-        return {}
+        # Merge validation notes or resolve conflicting statuses here
+        return {"executed_agents": ["consolidation_node"]}

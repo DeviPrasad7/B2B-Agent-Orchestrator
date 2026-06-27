@@ -20,8 +20,9 @@ from agent.state import GraphState
 from agent.utils import Toolbox
 
 class TriggerMonitor:
-    def __init__(self, toolbox: Toolbox):
+    def __init__(self, toolbox: Toolbox, workflow_service: WorkflowService):
         self.toolbox = toolbox
+        self.workflow_service = workflow_service
         self._running = False
         self._task = None
 
@@ -111,8 +112,10 @@ class TriggerMonitor:
                         event_hash, prospect_id, status="processing"
                     )
 
+                    # Extract company name robustly (up to first 3 words)
+                    raw_title = entry.get("title", "")
                     company_name = (
-                        entry.get("title", "").split(" ")[0]
+                        " ".join(raw_title.split(" ")[:3])
                         if source.type != "job_board"
                         else "Unknown"
                     )
@@ -138,7 +141,7 @@ class TriggerMonitor:
 
                     try:
                         await memory_service.save_prospect_state(state)
-                        await WorkflowService.submit_prospect(state, prospect_id)
+                        await self.workflow_service.submit_prospect(state, prospect_id)
 
                         # ── Outbox step 2: mark "completed" after successful submit ──
                         await memory_service.update_event_status(event_hash, "completed")

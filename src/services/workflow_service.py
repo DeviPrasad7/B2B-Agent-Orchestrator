@@ -7,30 +7,20 @@ from core.logging import logger
 class WorkflowService:
     """Wrapper to run the LangGraph workflow.
 
-    Can be used either as a class (legacy, via set_app/set_hitl_service) or
-    as an instance (preferred, stored on app.state.workflow_service).
-    Both patterns share the same underlying class-level _app/_hitl_service
-    references so they stay in sync.
+    Instance-based approach. Should be stored on app.state.workflow_service
+    or injected via dependencies.
     """
 
-    _app = None
-    _hitl_service = None
+    def __init__(self, graph_app, hitl_service=None):
+        """Instance constructor."""
+        self._app = graph_app
+        self._hitl_service = hitl_service
+        self._tasks = set()
 
-    def __init__(self, graph_app, hitl_service):
-        """Instance constructor – store on app.state.workflow_service."""
-        WorkflowService._app = graph_app
-        WorkflowService._hitl_service = hitl_service
+    def set_hitl_service(self, hitl_service):
+        self._hitl_service = hitl_service
 
-    @classmethod
-    def set_app(cls, app):
-        cls._app = app
-
-    @classmethod
-    def set_hitl_service(cls, hitl_service):
-        cls._hitl_service = hitl_service
-
-    @staticmethod
-    async def submit_prospect(state: GraphState, thread_id: str):
+    async def submit_prospect(self, state: GraphState, thread_id: str):
         """
         Submits a prospect state to the LangGraph workflow asynchronously.
         """
@@ -50,13 +40,13 @@ class WorkflowService:
             logger.info("Starting workflow for prospect", thread_id=thread_id)
             config = {"configurable": {"thread_id": thread_id}}
             try:
-                if WorkflowService._app is None:
+                if self._app is None:
                     raise RuntimeError("WorkflowService graph app is not initialized")
                     
-                await WorkflowService._app.ainvoke(configured_state, config=config)
+                await self._app.ainvoke(configured_state, config=config)
                 
                 # Check if the graph paused due to an interrupt
-                state_snapshot = await WorkflowService._app.aget_state(config)
+                state_snapshot = await self._app.aget_state(config)
                 if state_snapshot.next:
                     logger.info("Workflow paused (interrupt) for prospect", thread_id=thread_id)
                     interrupt_data = {}
@@ -65,8 +55,8 @@ class WorkflowService:
                             interrupt_data = task.interrupts[0].value
                             break
                     
-                    if WorkflowService._hitl_service:
-                        await WorkflowService._hitl_service.create_request(thread_id, interrupt_data)
+                    if self._hitl_service:
+                        await self._hitl_service.create_request(thread_id, interrupt_data)
                     else:
                         logger.error("HITLService not configured in WorkflowService")
                 else:
@@ -75,11 +65,12 @@ class WorkflowService:
             except Exception as e:
                 logger.error("Workflow failed", thread_id=thread_id, error=str(e))
 
-        asyncio.create_task(run_workflow(state))
+        task = asyncio.create_task(run_workflow(state))
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
         return thread_id
 
-    @staticmethod
-    async def resume_with_hitl(thread_id: str, decision: str, corrections: dict):
+    async def resume_with_hitl(self, thread_id: str, decision: str, corrections: dict):
         async def run_resume():
             config = {"configurable": {"thread_id": thread_id}}
             logger.info("Resuming workflow", thread_id=thread_id, decision=decision)
@@ -89,9 +80,9 @@ class WorkflowService:
                 if corrections:
                     resume_payload["corrections"] = corrections
                     
-                await WorkflowService._app.ainvoke(Command(resume=resume_payload), config=config)
+                await self._app.ainvoke(Command(resume=resume_payload), config=config)
                 
-                state_snapshot = await WorkflowService._app.aget_state(config)
+                state_snapshot = await self._app.aget_state(config)
                 if not state_snapshot.next:
                     logger.info("Workflow completed after resume", thread_id=thread_id)
                 else:
@@ -99,4 +90,6 @@ class WorkflowService:
             except Exception as e:
                 logger.error("Workflow resume failed", thread_id=thread_id, error=str(e))
 
-        asyncio.create_task(run_resume())
+        task = asyncio.create_task(run_resume())
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)

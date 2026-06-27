@@ -80,8 +80,9 @@ def mock_toolbox():
             return await f(*args, **kwargs)
         return f(*args, **kwargs)
         
-    toolbox.circuit_breaker = AsyncMock()
+    toolbox.circuit_breaker = MagicMock()
     toolbox.circuit_breaker.execute = AsyncMock(side_effect=mock_execute)
+    toolbox.circuit_breaker.check_health = MagicMock(return_value={"status": "healthy"})
     
     return toolbox
 
@@ -99,24 +100,38 @@ def config_service(async_session):
 def hitl_service(memory_service):
     return HITLService(memory_service)
 
-@pytest.fixture
-def workflow_service(mock_toolbox, memory_service):
+@pytest_asyncio.fixture
+async def workflow_service(mock_toolbox, memory_service, hitl_service):
     # Workflow service needs a graph app. We will initialize it with mocked components.
     config_dict = {"icp": {}, "personas": []}
-    WorkflowService._app = None # Reset
-    return WorkflowService
+    graph_app, pool = await get_app(mock_toolbox, memory_service, config_dict)
+    ws = WorkflowService(graph_app, hitl_service)
+    yield ws
+    if pool:
+        await pool.close()
 
 
 
 # --- API Fixtures ---
 
 @pytest_asyncio.fixture
-async def app_client(async_session, mock_toolbox, hitl_service):
+async def app_client(async_session, mock_toolbox, hitl_service, memory_service):
     # We might need to override dependencies here if FastAPI uses Depends,
     # but the app relies on lifespan and global state mostly.
+    config_dict = {"icp": {}, "personas": []}
+    graph_app, pool = await get_app(mock_toolbox, memory_service, config_dict)
+    
+    app.state.graph_app = graph_app
+    app.state.checkpointer_pool = pool
     app.state.hitl_service = hitl_service
+    app.state.workflow_service = WorkflowService(graph_app, hitl_service)
+    hitl_service.workflow_service = app.state.workflow_service
+    
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
+        
+    if pool:
+        await pool.close()
 
 # --- Data Fixtures ---
 

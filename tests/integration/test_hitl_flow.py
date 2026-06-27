@@ -11,9 +11,9 @@ async def test_hitl_flow_execution(mock_toolbox, memory_service, hitl_service, s
         "personas": sample_personas
     }
     
-    graph_app, _ = await get_app(mock_toolbox, memory_service, config_dict)
-    WorkflowService.set_app(graph_app)
-    WorkflowService.set_hitl_service(hitl_service)
+    graph_app, pool = await get_app(mock_toolbox, memory_service, config_dict)
+    ws = WorkflowService(graph_app, hitl_service)
+    hitl_service.workflow_service = ws
     
     # Run the workflow with a company name that forces HITL or mock the planner to go to HITL
     def llm_routing_side_effect(prompt, fallback, require_json=False):
@@ -46,7 +46,7 @@ async def test_hitl_flow_execution(mock_toolbox, memory_service, hitl_service, s
         "overall_status": "PENDING"
     }
     await memory_service.save_prospect_state(state)
-    thread_id = await WorkflowService.submit_prospect(state, pid)
+    thread_id = await ws.submit_prospect(state, pid)
     await asyncio.sleep(0.5)
     
     # The workflow should be paused and status should be PENDING_HUMAN
@@ -60,8 +60,10 @@ async def test_hitl_flow_execution(mock_toolbox, memory_service, hitl_service, s
     req = pending_reqs[0]
     
     # Resume the workflow via approval
-    await WorkflowService.resume_with_hitl(thread_id, "APPROVED", {"score": 90})
+    await ws.resume_with_hitl(thread_id, "APPROVED", {"score": 90})
     await asyncio.sleep(0.5)
+    if pool:
+        await pool.close()
     
     # Check updated status
     prospect = await memory_service.get_prospect(pid)
