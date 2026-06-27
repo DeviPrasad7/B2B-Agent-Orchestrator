@@ -95,8 +95,8 @@ def config_service(async_session):
     return ConfigService(async_session)
 
 @pytest.fixture
-def hitl_service():
-    return HITLService()
+def hitl_service(memory_service):
+    return HITLService(memory_service)
 
 @pytest.fixture
 def workflow_service(mock_toolbox, memory_service):
@@ -110,10 +110,10 @@ def workflow_service(mock_toolbox, memory_service):
 # --- API Fixtures ---
 
 @pytest_asyncio.fixture
-async def app_client(async_session, mock_toolbox):
+async def app_client(async_session, mock_toolbox, hitl_service):
     # We might need to override dependencies here if FastAPI uses Depends,
     # but the app relies on lifespan and global state mostly.
-    
+    app.state.hitl_service = hitl_service
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
 

@@ -111,15 +111,25 @@ Output ONLY a structured JSON object with the following keys:
         fallback_json = '{"next_node": "__end__", "reasoning": "Fallback"}'
         
         try:
-            response = await self.toolbox.generate_text(prompt, fallback_json)
-            json_match = re.search(r'\{.*\}', response, re.DOTALL)
-            if json_match:
-                data = json.loads(json_match.group(0))
+            response = await self.toolbox.generate_text(prompt, fallback_json, require_json=True)
+            
+            # Clean response of any markdown backticks that the LLM might have returned despite instructions
+            clean_response = response.strip()
+            if clean_response.startswith('```json'):
+                clean_response = clean_response[7:]
+            elif clean_response.startswith('```'):
+                clean_response = clean_response[3:]
+            if clean_response.endswith('```'):
+                clean_response = clean_response[:-3]
+            clean_response = clean_response.strip()
+            
+            try:
+                data = json.loads(clean_response)
                 next_node = data.get("next_node", "__end__")
                 logger.info("LLM Planner decision", extra={"decision": data, "prospect_id": prospect_id})
-            else:
+            except json.JSONDecodeError:
+                logger.warning("LLM Planner returned invalid JSON, using fallback", extra={"response": response})
                 next_node = self._deterministic_fallback(state)
-                logger.warning("LLM Planner returned invalid JSON, using fallback", extra={"next_node": next_node})
                 
             if next_node not in available_agents and next_node != "__end__":
                 next_node = self._deterministic_fallback(state)

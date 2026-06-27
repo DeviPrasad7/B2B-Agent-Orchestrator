@@ -10,10 +10,15 @@ class WorkflowService:
     """Wrapper to run the LangGraph workflow."""
     
     _app = None
+    _hitl_service = None
 
     @classmethod
     def set_app(cls, app):
         cls._app = app
+        
+    @classmethod
+    def set_hitl_service(cls, hitl_service):
+        cls._hitl_service = hitl_service
 
     @staticmethod
     async def submit_prospect(state: GraphState, thread_id: str):
@@ -27,9 +32,9 @@ class WorkflowService:
             thresholds = await config_service.get_thresholds()
             
             state["config"] = {
-                "icp": icp.dict() if icp else {},
-                "persona": persona.dict() if persona else {},
-                "thresholds": thresholds.dict() if thresholds else {}
+                "icp": icp.model_dump() if icp else {},
+                "persona": persona.model_dump() if persona else {},
+                "thresholds": thresholds.model_dump() if thresholds else {}
             }
             
         async def run_workflow(configured_state: GraphState):
@@ -48,8 +53,10 @@ class WorkflowService:
                             interrupt_data = task.interrupts[0].value
                             break
                     
-                    from services.hitl_service import HITLService
-                    await HITLService.create_request(thread_id, interrupt_data)
+                    if WorkflowService._hitl_service:
+                        await WorkflowService._hitl_service.create_request(thread_id, interrupt_data)
+                    else:
+                        logger.error("HITLService not configured in WorkflowService")
                 else:
                     final_state = state_snapshot.values
                     logger.info("Workflow completed", thread_id=thread_id, final_status=final_state.get("overall_status"))

@@ -58,10 +58,19 @@ class LLMService:
             self._llm = _build_chat_model()
         return self._llm
 
-    async def generate_text(self, prompt: str, fallback: str) -> str:
+    async def generate_text(self, prompt: str, fallback: str, require_json: bool = False) -> str:
         try:
-            messages = [SystemMessage(content="You are a prospect summarizer AI."), HumanMessage(content=prompt)]
-            response = await self.llm.ainvoke(messages)
+            sys_msg = "You are a prospect summarizer AI."
+            if require_json:
+                sys_msg += " You must return ONLY valid JSON. Do not include markdown formatting or extra text."
+            messages = [SystemMessage(content=sys_msg), HumanMessage(content=prompt)]
+            
+            # Check if it's OpenAI to use native JSON mode
+            if require_json and settings.LLM_PROVIDER.lower() == "openai":
+                response = await self.llm.bind(response_format={"type": "json_object"}).ainvoke(messages)
+            else:
+                response = await self.llm.ainvoke(messages)
+                
             return response.content
         except Exception as e:
             logger.error("LLM generation failed", error=str(e))

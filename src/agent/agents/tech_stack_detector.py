@@ -31,7 +31,7 @@ class TechStackDetectorNode(AgentNode):
             return {
                 "executed_agents": ["tech_stack_detector_node"],
                 "data": {
-                    "tech_stack": [t.dict() for t in stack],
+                    "tech_stack": [t.model_dump() for t in stack],
                     "tech_source_map": {t.technology: t.source for t in stack}
                 },
                 "tech_detection_status": "SUCCESS"

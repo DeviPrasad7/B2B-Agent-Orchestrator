@@ -10,10 +10,10 @@ from agent.state import GraphState
 from agent.utils import Toolbox
 
 logger = structlog.get_logger()
-toolbox = Toolbox()
 
 class TriggerMonitor:
-    def __init__(self):
+    def __init__(self, toolbox: Toolbox):
+        self.toolbox = toolbox
         self._running = False
         self._task = None
 
@@ -59,13 +59,13 @@ class TriggerMonitor:
                     
                     entries = []
                     if source.type == "rss":
-                        entries = await toolbox.fetch_rss_entries(source.url)
+                        entries = await self.toolbox.fetch_rss_entries(source.url)
                     elif source.type == "news_api":
                         keywords = source.config.get("keywords", "") if source.config else ""
-                        entries = await toolbox.fetch_news_api(keywords)
+                        entries = await self.toolbox.fetch_news_api(keywords)
                     elif source.type == "job_board":
                         company = source.config.get("company", "") if source.config else ""
-                        entries = await toolbox.fetch_jobs(company)
+                        entries = await self.toolbox.fetch_jobs(company)
                     
                     for entry in entries:
                         # Create a unique hash for the event based on title or link

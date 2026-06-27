@@ -11,13 +11,12 @@ from models.database import async_session, init_db
 from core.settings import settings
 from services.config_service import ConfigService
 from core.logging import setup_logging
-from core.settings import settings
+from services.hitl_service import HITLService
 
 # Initialize logging at startup
 setup_logging(settings.LOG_LEVEL)
 
-# Global trigger monitor instance
-trigger_monitor = TriggerMonitor()
+# Global trigger monitor instance removed (moved to state)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -49,10 +48,15 @@ async def lifespan(app: FastAPI):
     
     graph_app = await get_app(toolbox, memory_service, config_dict)
     app.state.graph_app = graph_app
+    app.state.hitl_service = HITLService(memory_service)
+    
+    # Instantiate TriggerMonitor
+    app.state.trigger_monitor = TriggerMonitor(toolbox)
     
     # Inject graph_app into WorkflowService to avoid circular imports
     from services.workflow_service import WorkflowService
     WorkflowService.set_app(graph_app)
+    WorkflowService.set_hitl_service(app.state.hitl_service)
     
     yield
 

@@ -21,7 +21,7 @@ class CompetitorIntelNode(AgentNode):
                 name = tech.get("technology")
                 comp_mapping = self.toolbox.get_competitor_info(name)
                 if comp_mapping:
-                    intel[name] = comp_mapping.dict()
+                    intel[name] = comp_mapping.model_dump()
                     
             if intel:
                 return {

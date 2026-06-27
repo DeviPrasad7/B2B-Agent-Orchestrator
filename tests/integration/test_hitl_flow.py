@@ -13,9 +13,10 @@ async def test_hitl_flow_execution(mock_toolbox, memory_service, hitl_service, s
     
     graph_app = await get_app(mock_toolbox, memory_service, config_dict)
     WorkflowService.set_app(graph_app)
+    WorkflowService.set_hitl_service(hitl_service)
     
     # Run the workflow with a company name that forces HITL or mock the planner to go to HITL
-    def llm_routing_side_effect(prompt, fallback):
+    def llm_routing_side_effect(prompt, fallback, require_json=False):
         if "Available Agents:" in prompt:
             executed_part = prompt.split("Executed Agents:")[1]
             if "'hitl_gateway_node'" not in executed_part:

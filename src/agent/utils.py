@@ -115,17 +115,7 @@ class CircuitBreaker:
 # ==============================================================================
 class Toolbox:
     """Facade for external tool interactions. Aggregates internal services."""
-    def __init__(self, llm_service=None, scraping_service=None, enrichment_service=None):
-        if llm_service is None:
-            from services.llm_service import LLMService
-            llm_service = LLMService()
-        if scraping_service is None:
-            from services.scraping_service import ScrapingService
-            scraping_service = ScrapingService()
-        if enrichment_service is None:
-            from services.enrichment_service import EnrichmentService
-            enrichment_service = EnrichmentService()
-
+    def __init__(self, llm_service, scraping_service, enrichment_service):
         self.circuit_breaker = CircuitBreaker()
         self.event_store = [] # In-memory event store for MVP
         
@@ -163,8 +153,8 @@ class Toolbox:
         # Fire and forget mock
         logger.info("Sending webhook", url=url)
         
-    async def generate_text(self, prompt: str, fallback: str) -> str:
-        return await self._llm_service.generate_text(prompt, fallback)
+    async def generate_text(self, prompt: str, fallback: str, require_json: bool = False) -> str:
+        return await self._llm_service.generate_text(prompt, fallback, require_json=require_json)
 
     async def find_company_employees(self, company_name: str) -> list[dict]:
         return await self._enrichment_service.find_company_employees(company_name)

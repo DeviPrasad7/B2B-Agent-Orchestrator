@@ -56,15 +56,16 @@ async def get_hitl_request(request_id: str, memory_service: MemoryService = Depe
     )
 
 from pydantic import BaseModel
+from fastapi import Request
 class HITLDecisionRequest(BaseModel):
     corrections: Optional[dict] = None
 
 @router.post("/{request_id}/approve")
-async def approve_hitl(request_id: str, req: HITLDecisionRequest = None):
-    from services.hitl_service import HITLService
+async def approve_hitl(request_id: str, request: Request, req: HITLDecisionRequest = None):
+    hitl_service = request.app.state.hitl_service
     corrections = req.corrections if req else None
     try:
-        await HITLService.resolve_request(request_id, "APPROVED", corrections)
+        await hitl_service.resolve_request(request_id, "APPROVED", corrections)
         return {"status": "success", "decision": "APPROVED"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -72,11 +73,11 @@ async def approve_hitl(request_id: str, req: HITLDecisionRequest = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/{request_id}/reject")
-async def reject_hitl(request_id: str, req: HITLDecisionRequest = None):
-    from services.hitl_service import HITLService
+async def reject_hitl(request_id: str, request: Request, req: HITLDecisionRequest = None):
+    hitl_service = request.app.state.hitl_service
     corrections = req.corrections if req else None
     try:
-        await HITLService.resolve_request(request_id, "REJECTED", corrections)
+        await hitl_service.resolve_request(request_id, "REJECTED", corrections)
         return {"status": "success", "decision": "REJECTED"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
