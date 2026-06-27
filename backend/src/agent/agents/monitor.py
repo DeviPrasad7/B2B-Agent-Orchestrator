@@ -1,14 +1,25 @@
+"""
+MonitorNode – fetches the company's website and builds raw signals for scoring.
+
+If no website URL is present, returns a minimal placeholder signal so the
+pipeline can continue to the enrichment stage.
+"""
 import time
 from typing import Any
-from ..state import GraphState
-from ..utils import Toolbox, CircuitBreakerState, MonitoringService
-from services.memory_service import MemoryService
+
 from ..base import AgentNode
 from ..registry import register_agent
+from ..state import GraphState
+from ..utils import CircuitBreakerState, MonitoringService, Toolbox
+from services.memory_service import MemoryService
 
-@register_agent("monitor_node", description="Fetches trigger events and discovers new companies")
+
+@register_agent(
+    "monitor_node",
+    description="Fetches the company website and builds raw signals for ICP scoring",
+)
 class MonitorNode(AgentNode):
-    def __init__(self, toolbox: Toolbox, memory: MemoryService, config: dict):
+    def __init__(self, toolbox: Toolbox, memory: MemoryService, config: dict) -> None:
         self.toolbox = toolbox
         self.memory = memory
         self.config = config
@@ -18,21 +29,38 @@ class MonitorNode(AgentNode):
         try:
             cb_state = self.toolbox.circuit_breaker.check_health("RSS_SOURCE")
             if cb_state == CircuitBreakerState.OPEN:
-                MonitoringService.log_warning(prospect_id, "RSS source unavailable, skipping")
+                MonitoringService.log_warning(prospect_id, "Website source unavailable (circuit open), skipping")
                 return {"executed_agents": ["monitor_node"]}
-                
-            # We simulate reading an external feed for triggers
+
             website_url = state.get("data", {}).get("website_url")
+            raw_signals = []
+
             if website_url:
                 page = await self.toolbox.fetch_webpage(website_url, 10)
-            
+                # Extract meaningful signal from page content (first 500 chars of text)
+                content_snippet = page.htmlContent[:500] if page.htmlContent else ""
+                raw_signals.append({
+                    "source": "website",
+                    "timestamp": time.time(),
+                    "content": content_snippet,
+                    "url": website_url,
+                })
+            else:
+                # No URL — add a minimal signal so subsequent agents can run
+                company_name = state.get("data", {}).get("company_name", "")
+                raw_signals.append({
+                    "source": "manual",
+                    "timestamp": time.time(),
+                    "content": f"Manual submission: {company_name}",
+                })
+
             event_hash = f"event_{prospect_id}"
             await self.memory.mark_event_processed(event_hash, prospect_id)
             self.toolbox.circuit_breaker.record_success("RSS_SOURCE")
-            
+
             return {
                 "executed_agents": ["monitor_node"],
-                "data": {"raw_signals": [{"source": "RSS", "timestamp": time.time(), "content": "Trigger event detected"}]}
+                "data": {"raw_signals": raw_signals},
             }
         except Exception as e:
             self.toolbox.circuit_breaker.record_failure("RSS_SOURCE")

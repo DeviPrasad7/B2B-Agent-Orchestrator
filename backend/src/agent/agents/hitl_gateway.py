@@ -21,16 +21,20 @@ class HitlGatewayNode(AgentNode):
         conflict = state.get("has_conflict", False)
         website = state.get("data", {}).get("website_url")
 
-        # Normalize threshold: config may store 70 (%) or 0.70 (decimal)
+        # Prefer fresh per-workflow thresholds from state (injected by WorkflowService),
+        # fall back to startup snapshot in self.config.
+        state_thresholds = state.get("config", {}).get("thresholds", {})
         raw_threshold = (
-            self.config.get("thresholds", {}).get("hitl_confidence_threshold")
+            state_thresholds.get("hitl_confidence_threshold")
+            or self.config.get("thresholds", {}).get("hitl_confidence_threshold")
             or self.config.get("hitl_confidence_threshold")
             or 0.40
         )
         threshold = raw_threshold / 100.0 if raw_threshold > 1 else raw_threshold
-        
+
         raw_auto_approve = (
-            self.config.get("thresholds", {}).get("auto_approve_threshold")
+            state_thresholds.get("auto_approve_threshold")
+            or self.config.get("thresholds", {}).get("auto_approve_threshold")
             or self.config.get("auto_approve_threshold")
             or 0.85
         )

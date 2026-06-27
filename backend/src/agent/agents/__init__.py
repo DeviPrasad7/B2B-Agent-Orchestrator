@@ -10,6 +10,7 @@ from .summarizer import SummarizerNode
 from .hitl_gateway import HitlGatewayNode
 from .output_dispatcher import OutputDispatcherNode
 from .consolidation import ConsolidationNode
+from .dynamic_executor import DynamicAgentExecutorNode
 
 __all__ = [
     "MonitorNode",
@@ -24,4 +25,5 @@ __all__ = [
     "HitlGatewayNode",
     "OutputDispatcherNode",
     "ConsolidationNode",
+    "DynamicAgentExecutorNode",
 ]

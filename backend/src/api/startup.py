@@ -88,9 +88,6 @@ async def lifespan(app: FastAPI):
     # Make toolbox accessible to endpoints (e.g. events)
     app.state.toolbox = toolbox
 
-    # Make toolbox accessible to endpoints (e.g. events)
-    app.state.toolbox = toolbox
-
     # Insert Magic Seed Prospect if empty
     await _initialize_magic_seed(memory_service, app.state.workflow_service)
 

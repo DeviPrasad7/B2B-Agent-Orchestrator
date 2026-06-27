@@ -31,6 +31,10 @@ services:
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - LLM_MODEL=${LLM_MODEL:-gpt-4o}
+      # Single worker required: PubSub, CircuitBreaker, and TriggerMonitor
+      # are all in-process. Multi-worker would cause duplicate polling and
+      # missing SSE events. Switch to Redis-backed variants for multi-worker.
+      - WORKERS=1
     depends_on:
       postgres:
         condition: service_healthy

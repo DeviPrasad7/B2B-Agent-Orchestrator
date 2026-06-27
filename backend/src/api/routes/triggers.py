@@ -1,16 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from typing import List
 from models.schemas import TriggerSourceSchema
-from models.database import TriggerSource, async_session
+from models.database import TriggerSource
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
+from api.dependencies import get_session
 import uuid
 
 router = APIRouter(prefix="/api/triggers", tags=["triggers"])
-
-async def get_session() -> AsyncSession:
-    async with async_session() as session:
-        yield session
 
 @router.get("/sources", response_model=List[TriggerSourceSchema])
 async def list_sources(session: AsyncSession = Depends(get_session)):

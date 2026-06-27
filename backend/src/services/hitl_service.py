@@ -28,6 +28,8 @@ class HITLService:
         """Create a new HITL request record and mark the prospect as pending human review."""
         summary = interrupt_data.get("reason", "Manual review requested")
         request_id = await self.memory_service.create_hitl_request(prospect_id, summary)
+        # Reflect the paused state in the Prospect row so the UI shows PENDING_HUMAN.
+        await self.memory_service.update_prospect_status(prospect_id, "PENDING_HUMAN")
         return request_id
 
     async def resolve_request(

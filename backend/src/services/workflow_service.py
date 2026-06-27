@@ -79,7 +79,7 @@ class WorkflowService:
             try:
                 from langgraph.types import Command
                 from core.pubsub import pubsub_broker
-                resume_payload = {"decision": decision}
+                resume_payload = {"action": decision}
                 if corrections:
                     resume_payload["corrections"] = corrections
                     

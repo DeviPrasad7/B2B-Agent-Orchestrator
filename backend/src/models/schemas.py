@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from uuid import UUID
@@ -6,14 +6,22 @@ from uuid import UUID
 # Configuration Schemas
 class ICPCriteria(BaseModel):
     industries: List[str]
-    min_revenue: int
-    max_revenue: int
-    min_employees: int
-    max_employees: int
+    min_revenue: int = Field(ge=0)
+    max_revenue: int = Field(ge=0)
+    min_employees: int = Field(ge=0)
+    max_employees: int = Field(ge=0)
     locations: List[str]
     tech_stack: List[str]
     behaviors: List[str]
     operator: str = "OR"
+
+    @model_validator(mode="after")
+    def check_ranges(self) -> "ICPCriteria":
+        if self.min_revenue > self.max_revenue:
+            raise ValueError("min_revenue must be <= max_revenue")
+        if self.min_employees > self.max_employees:
+            raise ValueError("min_employees must be <= max_employees")
+        return self
 
 class PersonaDefinition(BaseModel):
     job_titles: List[str]
