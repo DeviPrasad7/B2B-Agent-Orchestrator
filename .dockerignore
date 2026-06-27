@@ -35,8 +35,6 @@ tests/
 
 # Frontend (separate deployment)
 frontend/
-
-# Docker artifacts
 docker-compose.yml
 Dockerfile
 .dockerignore

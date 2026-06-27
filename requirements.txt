@@ -33,3 +33,7 @@ langgraph-checkpoint-postgres>=2.0.0
 
 # Migrations
 alembic>=1.13
+
+#frontend
+streamlit>=1.28.0
+requests>=2.31.0

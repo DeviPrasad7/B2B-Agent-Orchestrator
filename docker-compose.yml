@@ -36,5 +36,15 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - API_URL=http://icp-agent-api:8000   # points to the backend container
+    depends_on:
+      - icp-agent-api
+    restart: unless-stopped
 volumes:
   postgres_data:
