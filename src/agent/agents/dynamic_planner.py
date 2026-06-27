@@ -52,8 +52,22 @@ class DynamicPlannerNode(AgentNode):
             
         # 2. Prepare context for the LLM
         agents = self.registry.list_agents_with_descriptions()
-        # Exclude already executed agents to prevent infinite loops normally
-        available_agents = [a for a in agents if a["name"] not in executed]
+        
+        custom_agent_names = []
+        try:
+            from models.database import async_session, CustomAgent
+            from sqlalchemy import select
+            async with async_session() as session:
+                result = await session.execute(select(CustomAgent))
+                custom_agents = result.scalars().all()
+                for ca in custom_agents:
+                    agents.append({"name": ca.name, "description": ca.description, "is_custom": True})
+                    custom_agent_names.append(ca.name)
+        except Exception as e:
+            logger.error("Failed to fetch custom agents", error=str(e))
+            
+        # Exclude already executed agents
+        available_agents = [a for a in agents if a["name"] not in executed and a["name"] != "dynamic_agent_executor"]
         
         if not available_agents:
             logger.info("DynamicPlanner: No more available agents, ending workflow.", prospect_id=prospect_id)
@@ -119,6 +133,13 @@ Output format:
                 next_node=next_node,
                 reasoning=parsed.get("reasoning")
             )
+            
+            if next_node in custom_agent_names:
+                return {
+                    "executed_agents": ["dynamic_planner_node", next_node],
+                    "next_node": "dynamic_agent_executor",
+                    "next_custom_agent": next_node
+                }
             
             return {
                 "executed_agents": ["dynamic_planner_node"],

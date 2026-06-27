@@ -22,6 +22,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code
 COPY . .
 
+# Create a non-root user for security
+RUN adduser --disabled-password --gecos '' appuser && \
+    chown -R appuser:appuser /app
+
+USER appuser
+
 # Make entrypoint executable
 RUN chmod +x entrypoint.sh
 

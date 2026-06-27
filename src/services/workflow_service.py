@@ -43,7 +43,9 @@ class WorkflowService:
                 if self._app is None:
                     raise RuntimeError("WorkflowService graph app is not initialized")
                     
-                await self._app.ainvoke(configured_state, config=config)
+                from core.pubsub import pubsub_broker
+                async for event in self._app.astream_events(configured_state, config=config, version="v2"):
+                    await pubsub_broker.publish(thread_id, event)
                 
                 # Check if the graph paused due to an interrupt
                 state_snapshot = await self._app.aget_state(config)
@@ -76,11 +78,13 @@ class WorkflowService:
             logger.info("Resuming workflow", thread_id=thread_id, decision=decision)
             try:
                 from langgraph.types import Command
+                from core.pubsub import pubsub_broker
                 resume_payload = {"decision": decision}
                 if corrections:
                     resume_payload["corrections"] = corrections
                     
-                await self._app.ainvoke(Command(resume=resume_payload), config=config)
+                async for event in self._app.astream_events(Command(resume=resume_payload), config=config, version="v2"):
+                    await pubsub_broker.publish(thread_id, event)
                 
                 state_snapshot = await self._app.aget_state(config)
                 if not state_snapshot.next:

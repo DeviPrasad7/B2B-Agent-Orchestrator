@@ -8,6 +8,10 @@ from models.database import async_session
 from sqlalchemy.ext.asyncio import AsyncSession
 from agent.state import GraphState
 from api.dependencies import get_memory_service
+from sse_starlette.sse import EventSourceResponse
+from core.pubsub import pubsub_broker
+import json
+import asyncio
 
 router = APIRouter(prefix="/api/prospects", tags=["prospects"])
 
@@ -35,6 +39,7 @@ async def get_prospect(prospect_id: str, memory_service: MemoryService = Depends
         
     return ProspectDetail(
         id=prospect.id,
+        display_id=prospect.display_id,
         company_name=prospect.company_name,
         website=prospect.website,
         status=prospect.status,
@@ -83,3 +88,22 @@ async def create_prospect(
     await request.app.state.workflow_service.submit_prospect(state, thread_id=prospect_id)
     
     return {"status": "success", "prospect_id": prospect_id}
+
+@router.get("/{prospect_id}/stream")
+async def stream_prospect_events(request: Request, prospect_id: str):
+    async def event_generator():
+        queue = await pubsub_broker.subscribe(prospect_id)
+        try:
+            while True:
+                if await request.is_disconnected():
+                    break
+                try:
+                    event = await asyncio.wait_for(queue.get(), timeout=1.0)
+                    yield {"data": json.dumps(event, default=str)}
+                except asyncio.TimeoutError:
+                    continue
+        finally:
+            pubsub_broker.unsubscribe(prospect_id, queue)
+            
+    return EventSourceResponse(event_generator())
+

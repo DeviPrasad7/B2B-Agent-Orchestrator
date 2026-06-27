@@ -30,12 +30,14 @@ class ThresholdConfig(BaseModel):
 # Prospect Schemas
 class ProspectSummary(BaseModel):
     id: UUID
+    display_id: Optional[str] = None
     company_name: str
     status: str
     updated_at: datetime
 
 class ProspectDetail(BaseModel):
     id: UUID
+    display_id: Optional[str] = None
     company_name: str
     website: Optional[str]
     status: str
@@ -48,12 +50,24 @@ class ProspectDetail(BaseModel):
 # so we might map it directly to Dict[str, Any] in API, or use a Pydantic model
 class HITLRequestDetail(BaseModel):
     id: UUID
+    display_id: Optional[str] = None
     prospect_id: UUID
     summary: str
-    decision: Optional[str]
-    corrections: Optional[Dict[str, Any]]
+    decision: Optional[str] = None
+    corrections: Optional[dict] = None
     created_at: datetime
-    resolved_at: Optional[datetime]
+    resolved_at: Optional[datetime] = None
+
+class CustomAgentCreate(BaseModel):
+    name: str
+    description: str
+    system_prompt: str
+    allowed_tools: List[str] = []
+
+class CustomAgentDetail(CustomAgentCreate):
+    id: UUID
+    created_at: datetime
+
 
 class TriggerSourceSchema(BaseModel):
     id: Optional[UUID] = None

@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base, relationship
-from sqlalchemy import Column, String, JSON, DateTime, Integer, Boolean, ForeignKey, Uuid, Index
+from sqlalchemy import Column, String, JSON, DateTime, Integer, Boolean, ForeignKey, Uuid, Index, func
 import uuid
 from datetime import datetime, timezone
 
@@ -25,7 +25,8 @@ class Prospect(Base):
     __tablename__ = "prospects"
 
     id = Column(Uuid, primary_key=True, default=uuid.uuid4)
-    company_name = Column(String, nullable=False)
+    display_id = Column(String, nullable=True, index=True)
+    company_name = Column(String, nullable=False, index=True)
     website = Column(String, nullable=True)
     status = Column(String, nullable=False, default="PENDING", index=True)
     state_json = Column(JSON, nullable=True)
@@ -40,22 +41,33 @@ class HITLRequest(Base):
     __tablename__ = "hitl_requests"
 
     id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    display_id = Column(String, nullable=True, index=True)
     prospect_id = Column(Uuid, ForeignKey("prospects.id"), nullable=False)
     summary = Column(String, nullable=False)
     decision = Column(String, nullable=True, index=True)
     corrections = Column(JSON, nullable=True)
-    created_at = Column(DateTime(timezone=True), default=get_utc_now)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     resolved_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationship – used by selectinload in HITLService.resolve_request
     prospect = relationship("Prospect", back_populates="hitl_requests", lazy="noload")
+
+class CustomAgent(Base):
+    __tablename__ = "custom_agents"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    name = Column(String, unique=True, index=True, nullable=False)
+    description = Column(String, nullable=False)
+    system_prompt = Column(String, nullable=False)
+    allowed_tools = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Config(Base):
     __tablename__ = "config"
 
     key = Column(String, primary_key=True)
     value = Column(JSON, nullable=False)
-    updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    updated_at = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
 class TriggerSource(Base):
     __tablename__ = "trigger_sources"
@@ -66,7 +78,7 @@ class TriggerSource(Base):
     interval_seconds = Column(Integer, nullable=False, default=3600)
     enabled = Column(Boolean, nullable=False, default=True)
     config = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=get_utc_now)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now)
 
 class ProcessedEvent(Base):
     __tablename__ = "processed_events"

@@ -2,6 +2,8 @@
 langgraph>=0.2.14
 fastapi
 uvicorn
+sse-starlette
+
 
 # LLM – OpenAI is the default provider.
 langchain-openai>=0.1.20

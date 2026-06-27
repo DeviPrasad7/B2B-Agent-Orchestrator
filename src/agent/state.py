@@ -55,3 +55,7 @@ class GraphState(TypedDict):
     next_node: str
     last_agent: str
     simulate_failure: bool
+    
+    # Target custom agent for the generic executor
+    next_custom_agent: str
+

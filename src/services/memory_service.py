@@ -66,8 +66,10 @@ class MemoryService:
                 prospect.status = status
                 prospect.workflow_thread_id = prospect_id_str
             else:
+                display_id = f"PR-{str(prospect_id)[:6].upper()}"
                 prospect = Prospect(
                     id=prospect_id,
+                    display_id=display_id,
                     company_name=state.get("data", {}).get("company_name", "Unknown"),
                     status=status,
                     state_json=state_dict,
@@ -131,6 +133,7 @@ class MemoryService:
             return [
                 ProspectSummary(
                     id=p.id,
+                    display_id=p.display_id,
                     company_name=p.company_name,
                     status=p.status,
                     updated_at=p.updated_at
@@ -171,8 +174,10 @@ class MemoryService:
             raise ValueError("Invalid prospect ID")
             
         async with self.session_factory() as session:
+            display_id = f"HITL-{str(pid)[:6].upper()}"
             hitl = HITLRequest(
                 prospect_id=pid,
+                display_id=display_id,
                 summary=summary
             )
             session.add(hitl)

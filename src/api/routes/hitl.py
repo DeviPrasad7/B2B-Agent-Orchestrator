@@ -15,6 +15,7 @@ async def list_pending_hitl(memory_service: MemoryService = Depends(get_memory_s
     return [
         HITLRequestDetail(
             id=r.id,
+            display_id=r.display_id,
             prospect_id=r.prospect_id,
             summary=r.summary,
             decision=r.decision,
@@ -45,6 +46,7 @@ async def get_hitl_request(request_id: str, memory_service: MemoryService = Depe
         
     return HITLRequestDetail(
         id=r.id,
+        display_id=r.display_id,
         prospect_id=r.prospect_id,
         summary=r.summary,
         decision=r.decision,
