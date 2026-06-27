@@ -1,8 +1,8 @@
 from functools import partial
 from typing import Literal
 from langgraph.graph import StateGraph, START, END
-from langgraph.checkpoint.sqlite import SqliteSaver
-import sqlite3
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+import aiosqlite
 
 from .state import GraphState
 from .agents import (
@@ -20,30 +20,26 @@ from .agents import (
     contact_finder_node
 )
 
-app = None
-
-def setup_graph(toolbox, memory_store):
-    global app
-    
+def setup_graph(toolbox, memory_service):
     # Initialize graph
     workflow = StateGraph(GraphState)
 
     # Add nodes with injected dependencies
-    workflow.add_node("monitor_node", partial(monitor_node, toolbox=toolbox, memory=memory_store))
-    workflow.add_node("score_node", partial(score_node, toolbox=toolbox, memory=memory_store))
-    workflow.add_node("post_monitor_consolidation", partial(consolidation_node, toolbox=toolbox, memory=memory_store))
-    workflow.add_node("hitl_gateway_node", partial(hitl_gateway_node, toolbox=toolbox, memory=memory_store))
+    workflow.add_node("monitor_node", partial(monitor_node, toolbox=toolbox, memory=memory_service))
+    workflow.add_node("score_node", partial(score_node, toolbox=toolbox, memory=memory_service))
+    workflow.add_node("post_monitor_consolidation", partial(consolidation_node, toolbox=toolbox, memory=memory_service))
+    workflow.add_node("hitl_gateway_node", partial(hitl_gateway_node, toolbox=toolbox, memory=memory_service))
 
-    workflow.add_node("tech_stack_detector_node", partial(tech_stack_detector_node, toolbox=toolbox, memory=memory_store))
-    workflow.add_node("enricher_node", partial(enricher_node, toolbox=toolbox, memory=memory_store))
-    workflow.add_node("post_enrichment_consolidation", partial(consolidation_node, toolbox=toolbox, memory=memory_store))
+    workflow.add_node("tech_stack_detector_node", partial(tech_stack_detector_node, toolbox=toolbox, memory=memory_service))
+    workflow.add_node("enricher_node", partial(enricher_node, toolbox=toolbox, memory=memory_service))
+    workflow.add_node("post_enrichment_consolidation", partial(consolidation_node, toolbox=toolbox, memory=memory_service))
 
-    workflow.add_node("competitor_intel_node", partial(competitor_intel_node, toolbox=toolbox, memory=memory_store))
-    workflow.add_node("cross_validator_node", partial(cross_validator_node, toolbox=toolbox, memory=memory_store))
-    workflow.add_node("persona_matcher_node", partial(persona_matcher_node, toolbox=toolbox, memory=memory_store))
-    workflow.add_node("contact_finder_node", partial(contact_finder_node, toolbox=toolbox, memory=memory_store))
-    workflow.add_node("summarizer_node", partial(summarizer_node, toolbox=toolbox, memory=memory_store))
-    workflow.add_node("output_dispatcher_node", partial(output_dispatcher_node, toolbox=toolbox, memory=memory_store))
+    workflow.add_node("competitor_intel_node", partial(competitor_intel_node, toolbox=toolbox, memory=memory_service))
+    workflow.add_node("cross_validator_node", partial(cross_validator_node, toolbox=toolbox, memory=memory_service))
+    workflow.add_node("persona_matcher_node", partial(persona_matcher_node, toolbox=toolbox, memory=memory_service))
+    workflow.add_node("contact_finder_node", partial(contact_finder_node, toolbox=toolbox, memory=memory_service))
+    workflow.add_node("summarizer_node", partial(summarizer_node, toolbox=toolbox, memory=memory_service))
+    workflow.add_node("output_dispatcher_node", partial(output_dispatcher_node, toolbox=toolbox, memory=memory_service))
 
     # ==============================================================================
     # Graph Routing & Wiring
@@ -78,7 +74,12 @@ def setup_graph(toolbox, memory_store):
     workflow.add_edge("tech_stack_detector_node", "post_enrichment_consolidation")
     workflow.add_edge("enricher_node", "post_enrichment_consolidation")
 
-    def route_post_enrichment(state: GraphState) -> Literal["competitor_intel_node", "cross_validator_node"]:
+    def route_after_critical_phase(state: GraphState) -> Literal["competitor_intel_node", "cross_validator_node", "hitl_gateway_node"]:
+        errors = state.get("errors", [])
+        critical_errors = [e for e in errors if "tech_stack_detector_node" in e or "enricher_node" in e]
+        if critical_errors:
+            return "hitl_gateway_node"
+            
         tech_stack = state.get("data", {}).get("tech_stack", [])
         if tech_stack:
             return "competitor_intel_node"
@@ -87,10 +88,11 @@ def setup_graph(toolbox, memory_store):
     # Phase 5 & 6: Competitor Intel (Conditional) & Validation
     workflow.add_conditional_edges(
         "post_enrichment_consolidation",
-        route_post_enrichment,
+        route_after_critical_phase,
         {
             "competitor_intel_node": "competitor_intel_node",
-            "cross_validator_node": "cross_validator_node"
+            "cross_validator_node": "cross_validator_node",
+            "hitl_gateway_node": "hitl_gateway_node"
         }
     )
     workflow.add_edge("competitor_intel_node", "cross_validator_node")
@@ -142,9 +144,14 @@ def setup_graph(toolbox, memory_store):
 
     workflow.add_edge("output_dispatcher_node", END)
 
+    return workflow
+
+async def get_app(toolbox, memory_service):
+    workflow = setup_graph(toolbox, memory_service)
+    
     # Memory Checkpointer using a separate database to avoid conflicts
-    conn = sqlite3.connect("checkpoints.db", check_same_thread=False)
-    memory = SqliteSaver(conn)
+    conn = await aiosqlite.connect("checkpoints.db")
+    memory = AsyncSqliteSaver(conn)
 
     # Compile the workflow - NO interrupt_before since we use inline interrupt()
     app = workflow.compile(

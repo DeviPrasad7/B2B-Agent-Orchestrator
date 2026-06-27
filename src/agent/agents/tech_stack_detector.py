@@ -1,12 +1,13 @@
 import time
 from typing import Any
 from ..state import GraphState, ValidationNote
-from ..utils import Toolbox, CircuitBreakerState, MonitoringService, MemoryStore
+from ..utils import Toolbox, CircuitBreakerState, MonitoringService
+from services.memory_service import MemoryService
 
 async def tech_stack_detector_node(
     state: GraphState,
     toolbox: Toolbox,
-    memory: MemoryStore,
+    memory: MemoryService,
 ) -> dict[str, Any]:
     prospect_id = state.get("prospect_id", "unknown")
     website_url = state.get("data", {}).get("website_url")

@@ -2,12 +2,13 @@ import time
 from typing import Any
 from langgraph.types import interrupt
 from ..state import GraphState, ValidationNote
-from ..utils import Toolbox, MemoryStore, MonitoringService
+from ..utils import Toolbox
+from services.memory_service import MemoryService, MonitoringService
 
 async def hitl_gateway_node(
     state: GraphState,
     toolbox: Toolbox,
-    memory: MemoryStore,
+    memory: MemoryService,
 ) -> dict[str, Any]:
     prospect_id = state.get("prospect_id", "unknown")
     confidence = state.get("confidence_score", 100.0)

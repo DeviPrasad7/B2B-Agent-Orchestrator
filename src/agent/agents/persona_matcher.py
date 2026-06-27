@@ -1,12 +1,13 @@
 import time
 from typing import Any
 from ..state import GraphState
-from ..utils import Toolbox, MemoryStore, MonitoringService
+from ..utils import Toolbox
+from services.memory_service import MemoryService, MonitoringService
 
 async def persona_matcher_node(
     state: GraphState,
     toolbox: Toolbox,
-    memory: MemoryStore,
+    memory: MemoryService,
 ) -> dict[str, Any]:
     prospect_id = state.get("prospect_id", "unknown")
     company_name = state.get("data", {}).get("company_name")

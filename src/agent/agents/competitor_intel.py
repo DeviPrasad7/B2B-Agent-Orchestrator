@@ -1,11 +1,12 @@
 from typing import Any
 from ..state import GraphState
-from ..utils import Toolbox, MemoryStore
+from ..utils import Toolbox
+from services.memory_service import MemoryService
 
 async def competitor_intel_node(
     state: GraphState,
     toolbox: Toolbox,
-    memory: MemoryStore,
+    memory: MemoryService,
 ) -> dict[str, Any]:
     tech_stack = state.get("data", {}).get("tech_stack", [])
     intel = {}

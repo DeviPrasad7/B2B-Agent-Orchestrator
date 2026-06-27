@@ -116,51 +116,6 @@ class CircuitBreaker:
         
         if state == CircuitBreakerState.HALF_OPEN or count >= self.failure_threshold:
             self.service_states[service_name] = CircuitBreakerState.OPEN
-# ==============================================================================
-# MemoryStore
-# ==============================================================================
-from services.memory_service import MemoryService
-from models.database import async_session
-import asyncio
-
-class MemoryStore:
-    """Wrapper that delegates to the database-backed MemoryService."""
-    def __init__(self):
-        pass
-
-    async def _get_service(self):
-        # We create a brief local session and service to perform the action
-        async with async_session() as session:
-            service = MemoryService(session)
-            yield service
-            
-    def _run_async(self, coro):
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(coro)
-        except RuntimeError:
-            asyncio.run(coro)
-
-    def mark_event_processed(self, event_hash: str, prospect_id: str) -> None:
-        async def _run():
-            async with async_session() as session:
-                service = MemoryService(session)
-                await service.mark_event_processed(event_hash, prospect_id)
-        self._run_async(_run())
-        
-    def save_prospect_state(self, prospect_id: str, context: Any) -> None:
-        async def _run():
-            async with async_session() as session:
-                service = MemoryService(session)
-                await service.save_prospect_state(context)
-        self._run_async(_run())
-        
-    def rollback_prospect_state(self, prospect_id: str) -> None:
-        async def _run():
-            async with async_session() as session:
-                service = MemoryService(session)
-                await service.rollback_prospect_state(prospect_id)
-        self._run_async(_run())
 
 # ==============================================================================
 # Toolbox

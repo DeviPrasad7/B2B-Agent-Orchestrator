@@ -32,6 +32,17 @@
   - `HITLService`: Manages Human-In-The-Loop requests.
 - **API**: FastAPI providing `/api/config`, `/api/prospects`, `/api/hitl`, `/api/triggers`.
 
+## Phase 2.5 – Agent Layer Refactoring (COMPLETED)
+
+- [x] Split `nodes.py` into individual agent modules under `src/agent/agents/`.
+- [x] Injected dependencies (`toolbox`, `memory`) into all agent functions.
+- [x] Added `config` field to `GraphState` to pre‑load ICP/persona/thresholds.
+- [x] Modified `WorkflowService` to attach configuration to state before graph execution.
+- [x] Removed all direct database imports from agent modules.
+- [x] Updated `graph.py` to use `functools.partial` for dependency injection.
+- [x] Deleted `src/agent/nodes.py`.
+- [x] Verified graph compiles and runs without errors.
+
 ## Pending for Phase-3 (Frontend & Deployment)
 1. **Frontend UI**:
    - Dashboard for configuring rules, monitoring triggers, and resolving HITL requests.

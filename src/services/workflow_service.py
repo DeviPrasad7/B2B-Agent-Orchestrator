@@ -1,5 +1,4 @@
 import asyncio
-from agent.graph import app
 from agent.state import GraphState
 from models.database import async_session
 from services.config_service import ConfigService
@@ -10,6 +9,12 @@ logger = structlog.get_logger()
 class WorkflowService:
     """Wrapper to run the LangGraph workflow."""
     
+    _app = None
+
+    @classmethod
+    def set_app(cls, app):
+        cls._app = app
+
     @staticmethod
     async def submit_prospect(state: GraphState, thread_id: str):
         """
@@ -31,10 +36,10 @@ class WorkflowService:
             logger.info("Starting workflow for prospect", thread_id=thread_id)
             config = {"configurable": {"thread_id": thread_id}}
             try:
-                await app.ainvoke(configured_state, config=config)
+                await WorkflowService._app.ainvoke(configured_state, config=config)
                 
                 # Check if the graph paused due to an interrupt
-                state_snapshot = await app.aget_state(config)
+                state_snapshot = await WorkflowService._app.aget_state(config)
                 if state_snapshot.next:
                     logger.info("Workflow paused (interrupt) for prospect", thread_id=thread_id)
                     interrupt_data = {}
@@ -65,9 +70,9 @@ class WorkflowService:
                 if corrections:
                     resume_payload["edits"] = corrections
                     
-                await app.ainvoke(Command(resume=resume_payload), config=config)
+                await WorkflowService._app.ainvoke(Command(resume=resume_payload), config=config)
                 
-                state_snapshot = await app.aget_state(config)
+                state_snapshot = await WorkflowService._app.aget_state(config)
                 if not state_snapshot.next:
                     logger.info("Workflow completed after resume", thread_id=thread_id)
                 else:
@@ -76,4 +81,3 @@ class WorkflowService:
                 logger.error("Workflow resume failed", thread_id=thread_id, error=str(e))
 
         asyncio.create_task(run_resume())
-

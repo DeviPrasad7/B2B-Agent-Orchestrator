@@ -1,12 +1,13 @@
 import time
 from typing import Any
 from ..state import GraphState
-from ..utils import Toolbox, CircuitBreakerState, MonitoringService, MemoryStore
+from ..utils import Toolbox, CircuitBreakerState, MonitoringService
+from services.memory_service import MemoryService
 
 async def monitor_node(
     state: GraphState,
     toolbox: Toolbox,
-    memory: MemoryStore,
+    memory: MemoryService,
 ) -> dict[str, Any]:
     prospect_id = state.get("prospect_id", "unknown")
     try:
@@ -21,7 +22,7 @@ async def monitor_node(
             page = await toolbox.fetch_webpage(website_url, 10)
         
         event_hash = f"event_{prospect_id}"
-        memory.mark_event_processed(event_hash, prospect_id)
+        await memory.mark_event_processed(event_hash, prospect_id)
         toolbox.circuit_breaker.record_success("RSS_SOURCE")
         
         return {
