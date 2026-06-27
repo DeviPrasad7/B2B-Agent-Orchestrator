@@ -58,7 +58,8 @@ class TriggerMonitor:
         submit_prospect. We delete these rows so the next poll cycle retries.
         """
         import datetime
-        cutoff = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(minutes=5)
+        # SQLAlchemy DateTime is naive by default, so we must use a naive datetime
+        cutoff = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(minutes=5)
         async with async_session() as session:
             result = await session.execute(
                 select(ProcessedEvent).where(

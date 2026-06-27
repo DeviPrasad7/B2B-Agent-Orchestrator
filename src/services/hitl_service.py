@@ -16,6 +16,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 from services.memory_service import MemoryService
 from services.workflow_service import WorkflowService
+from models.database import get_utc_now
 
 
 class HITLService:
@@ -66,7 +67,7 @@ class HITLService:
             # Update HITL record
             hitl.decision = decision
             hitl.corrections = corrections
-            hitl.resolved_at = datetime.datetime.now(datetime.timezone.utc)
+            hitl.resolved_at = get_utc_now()
 
             # Update prospect status
             if hitl.prospect:

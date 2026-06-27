@@ -2,7 +2,7 @@ import uuid
 from typing import Any, Optional, List, Callable
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-from models.database import Prospect, HITLRequest, ProcessedEvent
+from models.database import Prospect, HITLRequest, ProcessedEvent, get_utc_now
 from models.schemas import ProspectSummary
 
 class MemoryService:
@@ -205,5 +205,5 @@ class MemoryService:
             if hitl:
                 hitl.decision = decision
                 hitl.corrections = corrections
-                hitl.resolved_at = datetime.datetime.now(datetime.timezone.utc)
+                hitl.resolved_at = get_utc_now()
                 await session.commit()

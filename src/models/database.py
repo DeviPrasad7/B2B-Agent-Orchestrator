@@ -18,8 +18,8 @@ async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit
 Base = declarative_base()
 
 def get_utc_now():
-    """Return a timezone-aware UTC datetime. Avoids the deprecated utcnow()."""
-    return datetime.now(timezone.utc)
+    """Return a timezone-naive UTC datetime."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 class Prospect(Base):
     __tablename__ = "prospects"

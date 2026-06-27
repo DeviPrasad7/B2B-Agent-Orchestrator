@@ -2,7 +2,8 @@ import time
 import httpx
 from bs4 import BeautifulSoup
 from core.logging import logger
-from agent.utils import WebPage, TechStackEntry, JobPosting, RateLimitError, TimeoutError, ServiceUnavailableError
+from agent.utils import WebPage, TechStackEntry, JobPosting
+from core.exceptions import RateLimitError, TimeoutError, ServiceUnavailableError
 
 class ScrapingService:
     async def fetch_webpage(self, url: str, timeout_sec: int = 10) -> WebPage:
