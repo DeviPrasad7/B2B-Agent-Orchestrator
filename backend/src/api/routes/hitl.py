@@ -24,6 +24,7 @@ async def list_pending_hitl(memory_service: MemoryService = Depends(get_memory_s
             id=r.id,
             display_id=r.display_id,
             prospect_id=r.prospect_id,
+            company_name=r.prospect.company_name if r.prospect else None,
             summary=r.summary,
             decision=r.decision,
             corrections=r.corrections,
@@ -43,7 +44,10 @@ async def get_hitl_request(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid request ID format")
 
-    result = await session.execute(select(HITLRequest).where(HITLRequest.id == rid))
+    from sqlalchemy.orm import selectinload
+    result = await session.execute(
+        select(HITLRequest).where(HITLRequest.id == rid).options(selectinload(HITLRequest.prospect))
+    )
     r = result.scalar_one_or_none()
 
     if not r:
@@ -53,6 +57,7 @@ async def get_hitl_request(
         id=r.id,
         display_id=r.display_id,
         prospect_id=r.prospect_id,
+        company_name=r.prospect.company_name if r.prospect else None,
         summary=r.summary,
         decision=r.decision,
         corrections=r.corrections,

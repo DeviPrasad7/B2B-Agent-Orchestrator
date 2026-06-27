@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from core.settings import settings
 
 db_url = settings.get_async_db_url()
-engine_kwargs = {"echo": settings.APP_ENV == "development"}
+engine_kwargs = {"echo": False}
 if not db_url.startswith("sqlite"):
     engine_kwargs["pool_size"] = 5
     engine_kwargs["max_overflow"] = 10

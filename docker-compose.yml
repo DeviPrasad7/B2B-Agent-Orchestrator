@@ -44,7 +44,7 @@ services:
     build:
       context: ./frontend
     ports:
-      - "8501:8501"
+      - "5173:5173"
     environment:
       - API_URL=http://api:8000   # points to the backend container
     depends_on:

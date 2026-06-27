@@ -199,9 +199,12 @@ class MemoryService:
             return hitl.id
 
     async def get_pending_hitl_requests(self) -> List[HITLRequest]:
+        from sqlalchemy.orm import selectinload
         async with self.session_factory() as session:
             result = await session.execute(
-                select(HITLRequest).where(HITLRequest.decision == None)
+                select(HITLRequest)
+                .where(HITLRequest.decision == None)
+                .options(selectinload(HITLRequest.prospect))
             )
             return list(result.scalars().all())
 

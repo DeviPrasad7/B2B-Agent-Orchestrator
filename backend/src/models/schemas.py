@@ -60,6 +60,7 @@ class HITLRequestDetail(BaseModel):
     id: UUID
     display_id: Optional[str] = None
     prospect_id: UUID
+    company_name: Optional[str] = None
     summary: str
     decision: Optional[str] = None
     corrections: Optional[dict] = None

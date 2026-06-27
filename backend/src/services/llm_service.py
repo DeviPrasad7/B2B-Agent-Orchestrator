@@ -38,7 +38,6 @@ def _build_chat_models():
         "gemini-3.1-flash-lite",
         "gemini-2.5-flash-lite",
         "gemini-3.5-flash",
-        "gemini-3-flash",
         "gemini-2.5-flash"
     ]
     
@@ -108,21 +107,42 @@ class LLMService:
         raise ValueError("No LLM clients available in the pools. Please configure API keys.")
 
     async def generate_text(self, prompt: str, fallback: str, require_json: bool = False, strategy: str = "heavy") -> str:
-        try:
-            sys_msg = "You are a prospect summarizer AI."
-            if require_json:
-                sys_msg += " You must return ONLY valid JSON. Do not include markdown formatting or extra text."
-            messages = [SystemMessage(content=sys_msg), HumanMessage(content=prompt)]
+        self._ensure_initialized()
+        sys_msg = "You are a prospect summarizer AI."
+        if require_json:
+            sys_msg += " You must return ONLY valid JSON. Do not include markdown formatting or extra text."
+        messages = [SystemMessage(content=sys_msg), HumanMessage(content=prompt)]
+        
+        pools = []
+        if strategy == "heavy":
+            pools = [self._gemini_pool, self._groq_pool]
+        else:
+            pools = [self._groq_pool, self._gemini_pool]
             
-            llm = self.get_next_llm(strategy=strategy)
+        last_error = None
+        for pool in pools:
+            if not pool:
+                continue
             
-            # Note: Groq also supports response_format for JSON mode
-            if require_json:
-                response = await llm.bind(response_format={"type": "json_object"}).ainvoke(messages)
-            else:
-                response = await llm.ainvoke(messages)
+            # Try each model in the current pool exactly once
+            for _ in range(len(pool)):
+                llm = pool.pop(0)
+                pool.append(llm) # Rotate to end for round-robin
                 
-            return response.content
-        except Exception as e:
-            logger.error("LLM generation failed", error=str(e), strategy=strategy)
-            return fallback
+                try:
+                    if require_json:
+                        response = await llm.bind(response_format={"type": "json_object"}).ainvoke(messages)
+                    else:
+                        response = await llm.ainvoke(messages)
+                        
+                    content = response.content
+                    if isinstance(content, list):
+                        content = "".join([c.get("text", "") if isinstance(c, dict) else str(c) for c in content])
+                    return content
+                except Exception as e:
+                    last_error = str(e)
+                    logger.warning(f"LLM generation failed for {llm.__class__.__name__}, retrying next...", error=last_error, strategy=strategy)
+                    continue
+                    
+        logger.error("All LLM models in the pool failed.", last_error=last_error, strategy=strategy)
+        return fallback
