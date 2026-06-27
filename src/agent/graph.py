@@ -16,11 +16,9 @@ from agent.nodes import (
     consolidation_node
 )
 
-def route_post_monitoring(state: GraphState) -> Literal["hitl_gateway_node", "parallel_enrichment_start"]:
-    # Conditional logic based on website url in data
-    website_url = state.get("data", {}).get("website_url")
-    if not website_url:
-        return "hitl_gateway_node"
+def route_post_scoring(state: GraphState) -> Literal["__end__", "parallel_enrichment_start"]:
+    if state.get("overall_status") == "NO_ACTION":
+        return "__end__"
     return "parallel_enrichment_start"
 
 def route_post_enrichment(state: GraphState) -> Literal["competitor_intel_node", "cross_validator_node"]:
@@ -30,11 +28,17 @@ def route_post_enrichment(state: GraphState) -> Literal["competitor_intel_node",
     return "cross_validator_node"
 
 def route_post_validation(state: GraphState) -> Literal["hitl_gateway_node", "summarizer_node"]:
-    confidence = state.get("confidence_score", 1.0)
+    confidence = state.get("confidence_score", 100.0)
     conflict = state.get("has_conflict", False)
-    if confidence < 0.40 or conflict:
+    if confidence < 40.0 or conflict:
         return "hitl_gateway_node"
     return "summarizer_node"
+    
+def route_post_hitl(state: GraphState) -> Literal["output_dispatcher_node", "__end__"]:
+    status = state.get("overall_status")
+    if status in ["APPROVED", "EDITED"]:
+        return "output_dispatcher_node"
+    return "__end__"
 
 # Initialize graph
 workflow = StateGraph(GraphState)
@@ -58,7 +62,7 @@ workflow.add_node("output_dispatcher_node", output_dispatcher_node)
 # Graph Routing & Wiring
 # ==============================================================================
 
-# Phase 2: Monitoring & Scoring run in parallel
+# Phase 2: Monitoring & Scoring run in parallel (Wait, brief says "After monitor and score", implies monitor -> score -> branch. But graph currently has them in parallel. I'll stick to the scaffolding's parallel structure but route after consolidation.)
 workflow.add_edge(START, "monitor_node")
 workflow.add_edge(START, "score_node")
 
@@ -66,21 +70,16 @@ workflow.add_edge(START, "score_node")
 workflow.add_edge("monitor_node", "post_monitor_consolidation")
 workflow.add_edge("score_node", "post_monitor_consolidation")
 
-# Website Validation Routing (Phase 3)
+# Routing after initial phase
 workflow.add_conditional_edges(
     "post_monitor_consolidation",
-    route_post_monitoring,
+    route_post_scoring,
     {
-        "hitl_gateway_node": "hitl_gateway_node",
+        "__end__": END,
         "parallel_enrichment_start": "tech_stack_detector_node" 
     }
 )
-
-# Phase 4: Parallel Enrichment
-workflow.add_edge("hitl_gateway_node", "tech_stack_detector_node") # Resume after HITL
-workflow.add_edge("hitl_gateway_node", "enricher_node") # Start parallel branch
-
-workflow.add_edge("post_monitor_consolidation", "tech_stack_detector_node")
+# Since parallel enrichment starts, we also need to route to enricher_node
 workflow.add_edge("post_monitor_consolidation", "enricher_node")
 
 # Converge Phase 4
@@ -108,17 +107,25 @@ workflow.add_conditional_edges(
     }
 )
 
+# After summarization, ALWAYS route to HITL
+workflow.add_edge("summarizer_node", "hitl_gateway_node")
+
 # Phase 8: Final HITL Gateway before output
-workflow.add_edge("summarizer_node", "output_dispatcher_node")
-workflow.add_edge("hitl_gateway_node", "output_dispatcher_node") # Final review convergence
+workflow.add_conditional_edges(
+    "hitl_gateway_node",
+    route_post_hitl,
+    {
+        "output_dispatcher_node": "output_dispatcher_node",
+        "__end__": END
+    }
+)
 
 workflow.add_edge("output_dispatcher_node", END)
 
 # Memory Checkpointer
 memory = MemorySaver()
 
-# Compile the workflow with interrupt (HITL) on specific node
+# Compile the workflow - NO interrupt_before since we use inline interrupt()
 app = workflow.compile(
-    checkpointer=memory,
-    interrupt_before=["hitl_gateway_node"] # Native HITL gateway
+    checkpointer=memory
 )

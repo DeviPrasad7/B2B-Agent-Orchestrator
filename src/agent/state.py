@@ -46,5 +46,6 @@ class GraphState(TypedDict):
     
     # Tracking for circuit breaking and routing
     executed_agents: Annotated[list[str], add_list]
+    errors: Annotated[list[str], add_list]
     has_conflict: bool
     tech_detection_status: str
