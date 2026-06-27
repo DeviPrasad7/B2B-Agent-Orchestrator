@@ -1,3 +1,11 @@
+"""
+WARNING: This is a purely IN-MEMORY PubSub implementation. 
+It will only work correctly if you run the FastAPI app with a single worker (WORKERS=1).
+If you scale out to multiple instances or multiple Uvicorn workers, SSE events will be dropped 
+because subscribers and publishers will be randomly assigned to different memory spaces.
+
+For a true production deployment, replace this module with a Redis-backed Pub/Sub implementation.
+"""
 import asyncio
 from typing import Dict, Set, Any
 from collections import defaultdict

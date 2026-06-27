@@ -16,11 +16,17 @@ class MemoryService:
             )
             return result.scalar_one_or_none() is not None
 
-    async def mark_event_processed(self, event_hash: str, prospect_id: str, status: str = "completed") -> None:
+    async def mark_event_processed(self, event_hash: str, prospect_id: str, status: str = "completed") -> bool:
+        from sqlalchemy.exc import IntegrityError
         async with self.session_factory() as session:
-            event = ProcessedEvent(event_hash=event_hash, prospect_id=prospect_id, status=status)
-            session.add(event)
-            await session.commit()
+            try:
+                event = ProcessedEvent(event_hash=event_hash, prospect_id=prospect_id, status=status)
+                session.add(event)
+                await session.commit()
+                return True
+            except IntegrityError:
+                await session.rollback()
+                return False
 
     async def update_event_status(self, event_hash: str, status: str) -> None:
         from sqlalchemy import update

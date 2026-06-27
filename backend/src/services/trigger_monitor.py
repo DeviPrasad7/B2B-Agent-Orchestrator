@@ -108,9 +108,12 @@ class TriggerMonitor:
 
                     # ── Outbox step 1: mark as "processing" BEFORE submit ──────
                     # If we crash here, cleanup job will retry on next cycle.
-                    await memory_service.mark_event_processed(
+                    inserted = await memory_service.mark_event_processed(
                         event_hash, prospect_id, status="processing"
                     )
+                    if not inserted:
+                        # Another worker just processed this event
+                        continue
 
                     # Extract company name robustly (up to first 3 words)
                     raw_title = entry.get("title", "")
@@ -143,8 +146,10 @@ class TriggerMonitor:
                         await memory_service.save_prospect_state(state)
                         await self.workflow_service.submit_prospect(state, prospect_id)
 
-                        # ── Outbox step 2: mark "completed" after successful submit ──
                         await memory_service.update_event_status(event_hash, "completed")
+
+                        # Throttle submissions to prevent unbounded concurrency
+                        await asyncio.sleep(1.0)
 
                         logger.info(
                             "Submitted new prospect from trigger",

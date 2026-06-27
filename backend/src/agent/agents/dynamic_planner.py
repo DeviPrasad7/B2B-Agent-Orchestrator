@@ -119,6 +119,11 @@ Output format:
                 clean_response = clean_response[:-3]
             clean_response = clean_response.strip()
             
+            # Remove trailing commas common in LLM outputs before parsing
+            import re
+            clean_response = re.sub(r',\s*}', '}', clean_response)
+            clean_response = re.sub(r',\s*\]', ']', clean_response)
+            
             parsed = json.loads(clean_response)
             next_node = parsed.get("next_node")
             
