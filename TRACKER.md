@@ -44,15 +44,16 @@
 - [x] **HITL Approval Gate**: Integrated via `interrupt()` in `hitl_gateway_node`.
 - [x] **User-Editable Business Rules**: Via ConfigService API.
 - [x] **Pluggable Agent Framework**: Agents are decoupled via DI, but `graph.py` requires manual edge wiring.
-- [-] **Reusable Agent/Tool Interface**: `Toolbox` acts as a facade, but currently violates Dependency Inversion by instantiating concrete services internally.
-- [-] **Agentic Orchestration Engine**: Basic LangGraph routing exists, but needs LLM planner to be truly "dynamic".
+- [x] **Reusable Agent/Tool Interface**: `Toolbox` acts as a facade and correctly uses Dependency Inversion via protocol interfaces.
+- [x] **Agentic Orchestration Engine**: A `DynamicPlannerNode` drives routing using an LLM to select the next agent based on context.
 - [ ] **Intuitive UI**: Missing. Backend API only.
 - [ ] **GCP Production Readiness**: Fails due to SQLite and dev-server configuration.
 
 ## Actionable Next Steps (See implementation_plan.md)
 1. **GCP Free Tier Readiness**: Migrate SQLite to PostgreSQL/Firestore; update Dockerfile for production Uvicorn.
-2. **SOLID Refactoring**: Fix Dependency Inversion in `Toolbox`; fix `MemoryService` initialization bug in `hitl_service.py`.
-3. **Dynamic Planner Upgrade**: Introduce an LLM-driven Supervisor node in LangGraph to dynamically select agents, replacing hard-coded conditional edges.
+2. **SOLID Refactoring**: [COMPLETED] Dependency Inversion in `Toolbox` fixed; `MemoryService` initialization bug in `hitl_service.py` fixed.
+3. **Dynamic Planner Upgrade**: [COMPLETED] Introduced an LLM-driven planner node in LangGraph to dynamically select agents.
+4. **Fix Edge Cases Identified in Code Review**: Address LLM JSON parsing fragility in `DynamicPlannerNode`, UUID parsing in `MemoryService.save_prospect_state`, and Magic Seed config race condition.
 4. **Frontend Implementation**: Build a lightweight React or Streamlit UI for the HITL dashboard.
 
 ---
