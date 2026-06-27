@@ -33,7 +33,7 @@ with tab1:
         with st.form("new_prospect_form"):
             col1, col2 = st.columns(2)
             with col1:
-                company_name = st.text_input("Company Name", required=True)
+                company_name = st.text_input("Company Name")
             with col2:
                 website = st.text_input("Website (Optional)")
             
