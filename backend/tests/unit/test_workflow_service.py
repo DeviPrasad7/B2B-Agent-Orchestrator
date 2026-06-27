@@ -69,4 +69,4 @@ async def test_resume_workflow(mock_graph_app):
     assert isinstance(command, Command)
     # Key is "action" (aligned with hitl_gateway.py which reads response.get("action"))
     assert command.resume["action"] == "APPROVED"
-    assert command.resume["corrections"] == {"score": 100}
+    assert command.resume["edits"] == {"score": 100}

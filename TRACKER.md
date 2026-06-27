@@ -21,8 +21,8 @@
 
 ## Current Architecture & Codebase Status (Deep Analysis)
 - **Frameworks**: FastAPI (Backend API), LangGraph (Workflow Orchestration), SQLAlchemy (Database ORM).
-- **Database**: Currently using SQLite (`app.db` for app state, `checkpoints.db` for LangGraph memory). **[BLOCKER FOR GCP]** Cloud Run requires stateless architecture; SQLite will cause data loss on container restarts. Must migrate to PostgreSQL (e.g., Supabase/Neon) or Firestore.
-- **State Management**: Uses `GraphState` (TypedDict) with `Annotated` reducers. LangGraph checkpointer `AsyncSqliteSaver` is active.
+- **Database**: PostgreSQL (via Supabase/Neon/Docker) is used for production data and LangGraph checkpointer memory. SQLite is strictly reserved for local fast-execution testing (via `aiosqlite` in-memory mode).
+- **State Management**: Uses `GraphState` (TypedDict) with `Annotated` reducers. LangGraph checkpointer dynamically uses `AsyncPostgresSaver` in production and `AsyncSqliteSaver` in tests.
 - **Orchestration Engine**: Implemented via `graph.py`. Currently uses a static StateGraph with conditional edges. To fully satisfy the "Dynamic Planner" requirement, the routing logic needs an LLM-driven planning agent rather than hard-coded conditional paths.
 - **Agent Architecture**: Monolithic `nodes.py` was successfully split into individual files (`src/agent/agents/`). Dependencies are injected via `functools.partial`.
 - **Services**: 

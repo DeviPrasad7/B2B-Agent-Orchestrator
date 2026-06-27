@@ -39,7 +39,7 @@ class ConfigService:
         
         # Resolve relative to the repo root regardless of CWD (works in Docker and locally).
         # File tree: backend/src/services/config_service.py → 3 parents up → repo root.
-        default_file = Path(__file__).parents[3] / "default_icp.yaml"
+        default_file = Path(__file__).parents[2] / "default_icp.yaml"
         if default_file.exists():
             with open(default_file, "r") as f:
                 loaded = yaml.safe_load(f)

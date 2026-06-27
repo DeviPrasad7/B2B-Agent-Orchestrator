@@ -55,8 +55,12 @@ async def get_app(toolbox, memory_service, config: dict):
     db_url = settings.get_checkpoint_db_url()
     
     if db_url.startswith("sqlite"):
-        from langgraph.checkpoint.memory import MemorySaver
-        checkpointer = MemorySaver()
+        import aiosqlite
+        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+        db_path = db_url.split(":///", 1)[-1] if ":///" in db_url else ":memory:"
+        pool = await aiosqlite.connect(db_path, uri=True)
+        checkpointer = AsyncSqliteSaver(pool)
+        await checkpointer.setup()
     else:
         import psycopg
         from psycopg_pool import AsyncConnectionPool
@@ -78,7 +82,4 @@ async def get_app(toolbox, memory_service, config: dict):
         checkpointer=checkpointer
     )
     # Return the app and the pool so we can gracefully close it on shutdown
-    if not db_url.startswith("sqlite"):
-        return app, pool
-    else:
-        return app, None
+    return app, pool

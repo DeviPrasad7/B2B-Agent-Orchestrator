@@ -22,10 +22,14 @@ from agent.graph import get_app
 
 # --- Database Fixtures ---
 
+from sqlalchemy.pool import StaticPool
+
 @pytest_asyncio.fixture(scope="function")
 async def async_engine():
     engine = create_async_engine(
         "sqlite+aiosqlite:///file:testdb?mode=memory&cache=shared&uri=true",
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
         echo=False,
     )
     async with engine.begin() as conn:

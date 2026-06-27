@@ -81,7 +81,7 @@ class WorkflowService:
                 from core.pubsub import pubsub_broker
                 resume_payload = {"action": decision}
                 if corrections:
-                    resume_payload["corrections"] = corrections
+                    resume_payload["edits"] = corrections
                     
                 async for event in self._app.astream_events(Command(resume=resume_payload), config=config, version="v2"):
                     await pubsub_broker.publish(thread_id, event)

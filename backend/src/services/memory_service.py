@@ -205,16 +205,27 @@ class MemoryService:
             )
             return list(result.scalars().all())
 
-    async def resolve_hitl_request(self, request_id: uuid.UUID, decision: str, corrections: Optional[dict]) -> None:
-        import datetime
+    async def resolve_hitl_request_and_update_prospect(self, request_id: uuid.UUID, decision: str, corrections: Optional[dict]) -> Optional[str]:
+        from sqlalchemy.orm import selectinload
         
         async with self.session_factory() as session:
             result = await session.execute(
-                select(HITLRequest).where(HITLRequest.id == request_id)
+                select(HITLRequest)
+                .where(HITLRequest.id == request_id)
+                .options(selectinload(HITLRequest.prospect))
             )
             hitl = result.scalar_one_or_none()
-            if hitl:
-                hitl.decision = decision
-                hitl.corrections = corrections
-                hitl.resolved_at = get_utc_now()
-                await session.commit()
+            if not hitl:
+                raise ValueError("HITL request not found")
+
+            hitl.decision = decision
+            hitl.corrections = corrections
+            hitl.resolved_at = get_utc_now()
+
+            workflow_thread_id = None
+            if hitl.prospect:
+                workflow_thread_id = hitl.prospect.workflow_thread_id
+                hitl.prospect.status = "APPROVED" if decision == "APPROVED" else "REJECTED"
+
+            await session.commit()
+            return workflow_thread_id

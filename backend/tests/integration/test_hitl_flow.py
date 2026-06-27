@@ -4,7 +4,7 @@ from agent.graph import get_app
 from models.database import Prospect
 
 @pytest.mark.asyncio
-async def test_hitl_flow_execution(mock_toolbox, memory_service, hitl_service, sample_icp, sample_personas, async_session):
+async def test_hitl_flow_execution(mock_toolbox, memory_service, hitl_service, sample_icp, sample_personas):
     # Setup graph app manually with mocks for end-to-end testing
     config_dict = {
         "icp": sample_icp,
@@ -47,7 +47,8 @@ async def test_hitl_flow_execution(mock_toolbox, memory_service, hitl_service, s
     }
     await memory_service.save_prospect_state(state)
     thread_id = await ws.submit_prospect(state, pid)
-    await asyncio.sleep(0.5)
+    if ws._tasks:
+        await asyncio.gather(*ws._tasks)
     
     # The workflow should be paused and status should be PENDING_HUMAN
     prospect = await memory_service.get_prospect(pid)
@@ -61,7 +62,8 @@ async def test_hitl_flow_execution(mock_toolbox, memory_service, hitl_service, s
     
     # Resume the workflow via approval
     await ws.resume_with_hitl(thread_id, "APPROVED", {"score": 90})
-    await asyncio.sleep(0.5)
+    if ws._tasks:
+        await asyncio.gather(*ws._tasks)
     if pool:
         await pool.close()
     

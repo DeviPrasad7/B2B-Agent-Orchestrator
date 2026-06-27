@@ -47,6 +47,7 @@ class OutputDispatcherNode(AgentNode):
                 "overall_status": overall_status
             }
         except Exception as e:
+            logger.error("output_dispatcher_node failed", error=str(e), exc_info=True)
             if prospect_id != "unknown":
                 await self.memory.rollback_prospect_state(prospect_id)
             return {
