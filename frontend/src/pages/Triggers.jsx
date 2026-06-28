@@ -111,21 +111,21 @@ export default function Triggers() {
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
       <PageHeader 
-        title="Data Sources" 
-        description="Configure automated telemetry sources for passive prospect discovery."
+        title="Passive Lead Generation" 
+        description="Configure automated telemetry sources to autonomously discover and feed new prospects into your pipeline."
         actions={
           <div className="flex-row gap-4">
             {monitorActive ? (
               <Button variant="danger" icon={<Square size={16} />} onClick={handleStopMonitor}>
-                Stop Scanners
+                Stop Lead Discovery
               </Button>
             ) : (
               <Button variant="success" icon={<Play size={16} />} onClick={handleStartMonitor}>
-                Start Scanners
+                Start Lead Discovery
               </Button>
             )}
             <Button icon={<Plus size={16} />} variant="primary" onClick={() => setShowAddForm(!showAddForm)}>
-              {showAddForm ? 'Cancel' : 'Add Source'}
+              {showAddForm ? 'Cancel' : 'Add Lead Source'}
             </Button>
           </div>
         }

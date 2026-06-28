@@ -56,33 +56,39 @@ const CustomBot = () => (
 const coreAgents = [
   {
     id: 'core',
-    name: 'Primary ICP Evaluator',
+    name: 'Dynamic Orchestrator',
     role: 'System Core',
-    description: 'The master orchestrator. Consumes target firmographics and coordinates sub-agents to perform full LangGraph analysis.',
-    tools: ['Orchestration', 'Validation', 'Decision Matrix'],
+    description: 'The master workflow engine. Consumes target firmographics and intelligently coordinates specialized services via LLM routing.',
+    tools: ['LangGraph Orchestration', 'Decision Matrix'],
     icon: <Zap size={12} style={{ marginRight: '4px' }}/>,
     visual: <CoreBot />,
-    isCore: true
+    isCore: true,
+    actionLabel: 'View Pipeline',
+    actionRoute: '/prospects'
   },
   {
     id: 'scraper',
-    name: 'Reconnaissance Drone',
-    role: 'Extraction Agent',
-    description: 'Autonomous crawler that scrapes target domains, reads site metadata, and extracts raw unstructured text for processing.',
-    tools: ['Web Scraper', 'DOM Parser', 'Metadata Extractor'],
+    name: 'Data Extraction Service',
+    role: 'Extraction Engine',
+    description: 'Autonomous crawler that scrapes target domains, parses metadata, and extracts unstructured text for deep processing.',
+    tools: ['Web Scraper', 'DOM Parser'],
     icon: <Search size={12} style={{ marginRight: '4px' }}/>,
     visual: <ScraperBot />,
-    isCore: true
+    isCore: true,
+    actionLabel: 'Test Scraper',
+    actionRoute: '/scraper-sandbox'
   },
   {
     id: 'enricher',
     name: 'Firmographic Enricher',
     role: 'Data Synthesizer',
-    description: 'Correlates raw scraped data against third-party APIs to verify employee counts, tech stacks, and revenue estimations.',
-    tools: ['Clearbit API', 'Crunchbase API', 'LinkedIn Filter'],
+    description: 'Correlates raw data against third-party APIs to verify employee counts, tech stacks, and revenue estimations.',
+    tools: ['Clearbit API', 'Crunchbase API'],
     icon: <Database size={12} style={{ marginRight: '4px' }}/>,
     visual: <EnricherBot />,
-    isCore: true
+    isCore: true,
+    actionLabel: 'Test Enricher',
+    actionRoute: '/enricher-sandbox'
   }
 ];
 
@@ -105,7 +111,9 @@ export default function AgentHub() {
         tools: a.allowed_tools || [],
         icon: <Cpu size={12} style={{ marginRight: '4px' }}/>,
         visual: <CustomBot />,
-        isCore: false
+        isCore: false,
+        actionLabel: 'Inspect Logs',
+        actionRoute: `/logs/${a.id}`
       }));
       setAgents([...coreAgents, ...customAgents]);
     } catch (error) {
@@ -242,8 +250,8 @@ export default function AgentHub() {
                 </div>
 
                 <div className="flex-row gap-2">
-                  <Button variant={agent.isCore ? 'primary' : 'secondary'} onClick={() => navigate('/prospects')} style={{ flex: 1 }}>
-                    {agent.isCore ? 'View Pipeline' : 'Inspect Logs'}
+                  <Button variant={agent.isCore ? 'primary' : 'secondary'} onClick={() => navigate(agent.actionRoute)} style={{ flex: 1 }}>
+                    {agent.actionLabel}
                   </Button>
                   {!agent.isCore && (
                     <Button variant="danger" icon={<Trash2 size={16} />} onClick={() => handleDelete(agent.id)} />

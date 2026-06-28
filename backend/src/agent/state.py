@@ -58,4 +58,5 @@ class GraphState(TypedDict):
     
     # Target custom agent for the generic executor
     next_custom_agent: str
-
+    
+    recent_thoughts: Annotated[list[str], add_list]

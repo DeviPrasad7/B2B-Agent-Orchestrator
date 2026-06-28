@@ -45,7 +45,38 @@ class WorkflowService:
                     
                 from core.pubsub import pubsub_broker
                 async for event in self._app.astream_events(configured_state, config=config, version="v2"):
-                    await pubsub_broker.publish(thread_id, event)
+                    # Only broadcast meaningful events to avoid frontend log dumping
+                    event_type = event.get("event")
+                    node_name = event.get("name", "SYSTEM")
+                    
+                    if event_type == "on_chain_end" and node_name.endswith("_node"):
+                        output = event.get("data", {}).get("output", {})
+                        if isinstance(output, dict):
+                            # The node output is usually the state update
+                            node_update = output.get(node_name, output) # LangGraph sometimes nests it
+                            if isinstance(node_update, dict):
+                                thoughts = node_update.get("recent_thoughts", [])
+                                if thoughts:
+                                    for thought in thoughts:
+                                        await pubsub_broker.publish(thread_id, {
+                                            "type": "thought",
+                                            "agent": node_name.replace("_node", ""),
+                                            "message": thought
+                                        })
+                                else:
+                                    await pubsub_broker.publish(thread_id, {
+                                        "type": "action",
+                                        "agent": node_name.replace("_node", ""),
+                                        "message": f"Completed execution."
+                                    })
+                                    
+                                # Broadcast state update so dashboard can update UI
+                                await pubsub_broker.publish(thread_id, {
+                                    "type": "state_update",
+                                    "agent": "SYSTEM",
+                                    "message": f"State updated by {node_name}",
+                                    "payload": node_update
+                                })
                 
                 # Check if the graph paused due to an interrupt
                 state_snapshot = await self._app.aget_state(config)

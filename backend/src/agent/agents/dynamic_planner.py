@@ -47,7 +47,8 @@ class DynamicPlannerNode(AgentNode):
             return {
                 "executed_agents": ["dynamic_planner_node"],
                 "next_node": last_agent,
-                "retry_counts": {last_agent: current_retries + 1}
+                "retry_counts": {last_agent: current_retries + 1},
+                "recent_thoughts": [f"Simulating failure, forcing retry on {last_agent}"]
             }
             
         # 2. Prepare context for the LLM
@@ -156,12 +157,14 @@ Format:
                 return {
                     "executed_agents": ["dynamic_planner_node", next_node],
                     "next_node": "dynamic_agent_executor",
-                    "next_custom_agent": next_node
+                    "next_custom_agent": next_node,
+                    "recent_thoughts": [parsed.get("reasoning", "Routing to custom agent")]
                 }
             
             return {
                 "executed_agents": ["dynamic_planner_node"],
                 "next_node": next_node,
+                "recent_thoughts": [parsed.get("reasoning", f"Routing to {next_node}")]
             }
             
         except Exception as e:
@@ -175,6 +178,6 @@ Format:
             
             for node in sequence:
                 if node not in executed:
-                    return {"executed_agents": ["dynamic_planner_node"], "next_node": node}
+                    return {"executed_agents": ["dynamic_planner_node"], "next_node": node, "recent_thoughts": [f"Fallback: Routing to {node}"]}
             
-            return {"executed_agents": ["dynamic_planner_node"], "next_node": "__end__"}
+            return {"executed_agents": ["dynamic_planner_node"], "next_node": "__end__", "recent_thoughts": ["Fallback: Pipeline complete"]}

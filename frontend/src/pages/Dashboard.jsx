@@ -133,6 +133,25 @@ export default function Dashboard() {
         }
       />
 
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px', marginBottom: '32px' }}>
+        <Card style={{ padding: '20px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 600 }}>Total Targets</div>
+          <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--text-primary)' }}>{prospects.length}</div>
+        </Card>
+        <Card style={{ padding: '20px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 600 }}>Approved</div>
+          <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--success)' }}>{prospects.filter(p => p.status === 'APPROVED' || p.status === 'COMPLETED').length}</div>
+        </Card>
+        <Card style={{ padding: '20px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 600 }}>Pending Review</div>
+          <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--warning)' }}>{prospects.filter(p => p.status === 'HITL').length}</div>
+        </Card>
+        <Card style={{ padding: '20px' }}>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '8px', fontWeight: 600 }}>Rejected</div>
+          <div style={{ fontSize: '32px', fontWeight: 700, color: 'var(--danger)' }}>{prospects.filter(p => p.status === 'REJECTED' || p.status === 'FAILED').length}</div>
+        </Card>
+      </div>
+
       <Modal 
         isOpen={showAddForm} 
         onClose={closeAddForm} 
@@ -186,15 +205,38 @@ export default function Dashboard() {
             <div style={{ display: 'flex', gap: '24px' }}>
               <div style={{ flex: 1 }}>
                 <div style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Discovered Data</div>
-                <div className="flex-col" style={{ gap: '12px' }}>
+                <div className="flex-col" style={{ gap: '12px', maxHeight: '400px', overflowY: 'auto' }}>
+                  
+                  {/* Actionable Summary Block */}
+                  {currentState?.data?.summary_object && (
+                    <div style={{ padding: '12px', background: '#fdfaf6', borderRadius: 'var(--radius-sm)', border: '1px solid var(--primary-accent)' }}>
+                      <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--primary-accent)', marginBottom: '8px', fontWeight: 600 }}>Actionable Summary</div>
+                      {(() => {
+                        let summary = currentState.data.summary_object;
+                        if (typeof summary === 'string') {
+                          try { summary = JSON.parse(summary); } catch (e) { summary = { overview: summary }; }
+                        }
+                        return (
+                          <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {summary.overview && <div><strong>Overview:</strong> {summary.overview}</div>}
+                            {summary.strengths && <div><strong style={{ color: 'var(--success)' }}>Strengths:</strong> {summary.strengths}</div>}
+                            {summary.risks && <div><strong style={{ color: 'var(--danger)' }}>Risks:</strong> {summary.risks}</div>}
+                            {summary.recommendation && <div><strong style={{ color: 'var(--primary-accent)' }}>Recommendation:</strong> {summary.recommendation}</div>}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
                   <div style={{ padding: '12px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
                     <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Tech Stack</div>
                     {!currentState?.data?.tech_stack ? (
                       <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '80%', animation: 'pulse 1.5s infinite' }} />
                     ) : (
-                      <div style={{ fontSize: '13px' }}>{(currentState.data.tech_stack || []).join(', ')} (Extracted)</div>
+                      <div style={{ fontSize: '13px' }}>{(currentState.data.tech_stack || []).join(', ')}</div>
                     )}
                   </div>
+                  
                   <div style={{ padding: '12px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
                     <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Employee Count</div>
                     {!currentState?.data?.employee_count ? (
@@ -203,25 +245,48 @@ export default function Dashboard() {
                       <div style={{ fontSize: '13px' }}>{currentState.data.employee_count} verified</div>
                     )}
                   </div>
+
+                  {/* Decision Makers Block */}
+                  {currentState?.data?.contacts && currentState.data.contacts.length > 0 && (
+                    <div style={{ padding: '12px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                      <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Decision Makers</div>
+                      <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {currentState.data.contacts.map((c, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e6e2d8', paddingBottom: '4px' }}>
+                            <span><strong>{c.name}</strong> ({c.title})</span>
+                            {c.email && <span style={{ color: 'var(--primary-accent)' }}>{c.email}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               </div>
               
-              <div className="terminal-window" style={{ flex: 2, maxHeight: '300px', overflowY: 'auto' }}>
-                <div className="terminal-header" style={{ position: 'sticky', top: 0, zIndex: 2 }}>
-                  <span>Execution Trace — {activeStreamId}</span>
-                </div>
-                <div className="terminal-body">
-                  {streamLogs.map((log, i) => (
-                    <div key={i} className="terminal-line">
-                      <span className="terminal-timestamp">[{new Date(log.ts).toLocaleTimeString()}]</span>
-                      <span className="terminal-agent">{log.agent}:</span>
-                      <span className="terminal-msg">{log.msg}</span>
-                    </div>
-                  ))}
+              <div style={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Workflow Thought Stream</div>
+                <div style={{ flex: 1, background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '16px', maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {streamLogs.filter(log => log.type === 'thought' || log.type === 'action' || log.agent === 'SYSTEM').map((log, i) => {
+                    const isSystem = log.agent === 'SYSTEM';
+                    return (
+                      <div key={i} style={{ display: 'flex', gap: '12px', opacity: i === streamLogs.length - 1 ? 1 : 0.7, transition: 'opacity 0.3s' }}>
+                        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isSystem ? 'var(--text-tertiary)' : 'var(--primary-accent)', marginTop: '6px' }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>
+                            {log.agent} <span style={{ fontWeight: 400, marginLeft: '8px' }}>{new Date(log.ts).toLocaleTimeString()}</span>
+                          </div>
+                          <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.5, background: isSystem ? 'transparent' : 'var(--bg-surface)', padding: isSystem ? '0' : '10px 12px', borderRadius: 'var(--radius-sm)', border: isSystem ? 'none' : '1px solid var(--border-light)' }}>
+                            {log.msg}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                   {submitting && (
-                    <div className="terminal-line" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-tertiary)', marginTop: '8px' }}>
-                      <div className="spinner" style={{ width: '12px', height: '12px', margin: 0, borderWidth: '2px' }} />
-                      Awaiting output...
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: 'var(--text-tertiary)', padding: '8px 0' }}>
+                      <div className="spinner" style={{ width: '14px', height: '14px', margin: 0, borderWidth: '2px', borderTopColor: 'var(--text-tertiary)' }} />
+                      <span style={{ fontSize: '13px' }}>Agent is thinking...</span>
                     </div>
                   )}
                   <div ref={logsEndRef} />
