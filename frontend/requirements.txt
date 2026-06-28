@@ -1,0 +1,7 @@
+# DEPRECATED: The frontend was migrated from Streamlit (Python) to React + Vite (Node.js).
+# This file is intentionally left blank to prevent confusion.
+# 
+# Please refer to package.json for frontend dependencies.
+# To run locally:
+#   npm install
+#   npm run dev
