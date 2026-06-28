@@ -47,7 +47,7 @@
 - [x] **Reusable Agent/Tool Interface**: `Toolbox` acts as a facade and correctly uses Dependency Inversion via protocol interfaces.
 - [x] **Agentic Orchestration Engine**: A `DynamicPlannerNode` drives routing using an LLM to select the next agent based on context.
 - [x] **Intuitive UI**: Streamlit application built and fully functional (`frontend/app.py`).
-- [x] **GCP Production Readiness**: SQLite migrated to PostgreSQL in production, Dockerfile uses Uvicorn.
+- [x] **GCP Production Readiness**: SQLite migrated to PostgreSQL in production, Dockerfile uses Uvicorn single worker.
 
 ---
 *Last updated: June 28, 2026*

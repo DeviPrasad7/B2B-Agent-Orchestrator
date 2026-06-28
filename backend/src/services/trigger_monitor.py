@@ -27,6 +27,7 @@ class TriggerMonitor:
         self.provider_factory = APIProviderFactory()
         self._running = False
         self._task = None
+        self._last_polled = {} # source_id (str) -> timestamp (float)
 
     def start(self) -> None:
         if self._running:
@@ -78,6 +79,9 @@ class TriggerMonitor:
                 logger.warning("Cleaned up orphaned processing events", count=len(orphans))
 
     async def poll_sources(self) -> None:
+        import time
+        current_time = time.time()
+        
         # Fetch enabled sources in a short-lived session
         async with async_session() as session:
             result = await session.execute(
@@ -89,6 +93,15 @@ class TriggerMonitor:
         memory_service = MemoryService(async_session)
 
         for source in sources:
+            source_id = str(source.id)
+            last_polled = self._last_polled.get(source_id, 0)
+            
+            # Respect the configured polling interval
+            if current_time - last_polled < source.interval_seconds:
+                continue
+                
+            self._last_polled[source_id] = current_time
+
             # Global safety sleep: Ensure we never hit burst rate limits (> 5 req/sec) 
             # across our various API providers (News API, GitHub).
             await asyncio.sleep(0.5)
@@ -162,8 +175,9 @@ class TriggerMonitor:
 
                         await memory_service.update_event_status(event_hash, "completed")
 
-                        # Throttle submissions to prevent unbounded concurrency
-                        await asyncio.sleep(1.0)
+                        # Aggressive throttle to protect free-tier LLM rate limits
+                        # Staggers pipeline executions heavily
+                        await asyncio.sleep(15.0)
 
                         logger.info(
                             "Submitted new prospect from trigger",

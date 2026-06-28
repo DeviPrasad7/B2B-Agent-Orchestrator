@@ -72,7 +72,7 @@ class GenericAPIProvider(BaseAPIProvider):
                 summary_key = config.get("summary_key", "summary")
                 link_key = config.get("link_key", "link")
                 
-                for item in items:
+                for item in items[:3]: # Aggressive limit to protect free tier
                     if not isinstance(item, dict):
                         continue
                     entries.append({

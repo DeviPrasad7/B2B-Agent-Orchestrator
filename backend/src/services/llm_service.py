@@ -65,12 +65,23 @@ def _build_chat_models():
 
 
 class LLMService:
+    _global_lock = None
+    _global_last_call_time = 0.0
+
     def __init__(self):
         self._gemini_pool = []
         self._groq_pool = []
         self._gemini_idx = 0
         self._groq_idx = 0
         self._initialized = False
+        
+        # Initialize the lock on the first instantiation (needs to be inside an event loop)
+        import asyncio
+        if LLMService._global_lock is None:
+            try:
+                LLMService._global_lock = asyncio.Lock()
+            except RuntimeError:
+                pass # Event loop might not be running yet
         
     def _ensure_initialized(self):
         if not self._initialized:
@@ -80,44 +91,33 @@ class LLMService:
     def get_next_llm(self, strategy: str = "heavy"):
         self._ensure_initialized()
         
-        # Heavy strategy -> use Gemini if available
-        if strategy == "heavy":
-            if self._gemini_pool:
-                llm = self._gemini_pool[self._gemini_idx]
-                self._gemini_idx = (self._gemini_idx + 1) % len(self._gemini_pool)
-                return llm
-            elif self._groq_pool:
-                # Fallback to groq if no gemini
-                llm = self._groq_pool[self._groq_idx]
-                self._groq_idx = (self._groq_idx + 1) % len(self._groq_pool)
-                return llm
-                
-        # Fast strategy -> use Groq if available
-        if strategy == "fast":
-            if self._groq_pool:
-                llm = self._groq_pool[self._groq_idx]
-                self._groq_idx = (self._groq_idx + 1) % len(self._groq_pool)
-                return llm
-            elif self._gemini_pool:
-                # Fallback to gemini if no groq
-                llm = self._gemini_pool[self._gemini_idx]
-                self._gemini_idx = (self._gemini_idx + 1) % len(self._gemini_pool)
-                return llm
+        # Always prioritize Groq due to higher rate limits
+        if self._groq_pool:
+            llm = self._groq_pool[self._groq_idx]
+            self._groq_idx = (self._groq_idx + 1) % len(self._groq_pool)
+            return llm
+        elif self._gemini_pool:
+            llm = self._gemini_pool[self._gemini_idx]
+            self._gemini_idx = (self._gemini_idx + 1) % len(self._gemini_pool)
+            return llm
 
         raise ValueError("No LLM clients available in the pools. Please configure API keys.")
 
     async def generate_text(self, prompt: str, fallback: str, require_json: bool = False, strategy: str = "heavy") -> str:
         self._ensure_initialized()
+        
+        # Groq has strict context limits (~6k tokens), so we truncate the raw character prompt to ~20000 chars safely.
+        max_chars = 20000
+        if len(prompt) > max_chars:
+            prompt = prompt[:max_chars] + "\n...[TRUNCATED]"
+            
         sys_msg = "You are a prospect summarizer AI."
         if require_json:
             sys_msg += " You must return ONLY valid JSON. Do not include markdown formatting or extra text."
         messages = [SystemMessage(content=sys_msg), HumanMessage(content=prompt)]
         
-        pools = []
-        if strategy == "heavy":
-            pools = [self._gemini_pool, self._groq_pool]
-        else:
-            pools = [self._groq_pool, self._gemini_pool]
+        # Always try Groq first, then Gemini
+        pools = [self._groq_pool, self._gemini_pool]
             
         last_error = None
         for pool in pools:
@@ -130,6 +130,20 @@ class LLMService:
                 pool.append(llm) # Rotate to end for round-robin
                 
                 try:
+                    import asyncio
+                    import time
+                    
+                    # Ensure lock exists if it failed in __init__ due to no loop
+                    if LLMService._global_lock is None:
+                        LLMService._global_lock = asyncio.Lock()
+                        
+                    async with LLMService._global_lock:
+                        now = time.time()
+                        elapsed = now - LLMService._global_last_call_time
+                        if elapsed < 2.5:
+                            await asyncio.sleep(2.5 - elapsed)
+                        LLMService._global_last_call_time = time.time()
+
                     if require_json:
                         response = await llm.bind(response_format={"type": "json_object"}).ainvoke(messages)
                     else:

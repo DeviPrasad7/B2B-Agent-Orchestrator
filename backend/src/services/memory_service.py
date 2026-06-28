@@ -69,8 +69,9 @@ class MemoryService:
             
             if prospect:
                 prospect.state_json = state_dict
+                if "state_json" in state:
+                    prospect.state_json = state["state_json"]
                 prospect.status = status
-                prospect.workflow_thread_id = prospect_id_str
             else:
                 display_id = f"PR-{str(prospect_id)[:6].upper()}"
                 prospect = Prospect(
@@ -78,8 +79,9 @@ class MemoryService:
                     display_id=display_id,
                     company_name=state.get("data", {}).get("company_name", "Unknown"),
                     status=status,
-                    state_json=state_dict,
-                    workflow_thread_id=prospect_id_str
+                    workflow_thread_id=state.get("workflow_thread_id"),
+                    custom_workflow_id=state.get("custom_workflow_id"),
+                    state_json=state.get("state_json", {})
                 )
                 session.add(prospect)
                 
@@ -131,7 +133,7 @@ class MemoryService:
             limit = filters.get("limit", 100)
             offset = filters.get("offset", 0)
             
-            query = query.limit(limit).offset(offset)
+            query = query.order_by(Prospect.created_at.desc()).limit(limit).offset(offset)
             
             result = await session.execute(query)
             prospects = result.scalars().all()
@@ -145,6 +147,18 @@ class MemoryService:
                     updated_at=p.updated_at
                 ) for p in prospects
             ]
+
+    async def get_recent_prospect_by_company(self, company_name: str, days: int = 7) -> Optional[Prospect]:
+        from datetime import datetime, timedelta, timezone
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(Prospect).where(
+                    Prospect.company_name.ilike(company_name),
+                    Prospect.created_at >= cutoff
+                ).order_by(Prospect.created_at.desc())
+            )
+            return result.scalars().first()
 
     async def get_prospect(self, prospect_id: str) -> Optional[Prospect]:
         try:

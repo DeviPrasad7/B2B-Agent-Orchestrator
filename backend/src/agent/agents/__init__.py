@@ -11,6 +11,8 @@ from .hitl_gateway import HitlGatewayNode
 from .output_dispatcher import OutputDispatcherNode
 from .consolidation import ConsolidationNode
 from .dynamic_executor import DynamicAgentExecutorNode
+from .researcher import ResearcherNode
+from .outreach_generator import OutreachGeneratorNode
 
 __all__ = [
     "MonitorNode",
@@ -26,4 +28,6 @@ __all__ = [
     "OutputDispatcherNode",
     "ConsolidationNode",
     "DynamicAgentExecutorNode",
+    "ResearcherNode",
+    "OutreachGeneratorNode",
 ]

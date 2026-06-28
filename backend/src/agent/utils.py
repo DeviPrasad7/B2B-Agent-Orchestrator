@@ -98,8 +98,8 @@ class Toolbox:
     async def scrape_linkedin(self, company_name: str) -> dict:
         return await self._enrichment_service.scrape_linkedin(company_name)
 
-    def detect_tech_stack(self, html_content: str, domain: str) -> list[TechStackEntry]:
-        return self._scraping_service.detect_tech_stack(html_content, domain)
+    async def detect_tech_stack(self, html_content: str, domain: str) -> list[TechStackEntry]:
+        return await self._scraping_service.detect_tech_stack(html_content, domain)
 
     def scrape_careers_page(self, url: str) -> list[JobPosting]:
         return self._scraping_service.scrape_careers_page(url)
@@ -120,6 +120,9 @@ class Toolbox:
 
     async def generate_text(self, prompt: str, fallback: str, require_json: bool = False, strategy: str = "heavy") -> str:
         return await self._llm_service.generate_text(prompt, fallback, require_json=require_json, strategy=strategy)
+
+    def get_llm(self, strategy: str = "heavy"):
+        return self._llm_service.get_next_llm(strategy=strategy)
 
     async def find_company_employees(self, company_name: str) -> list[dict]:
         return await self._enrichment_service.find_company_employees(company_name)

@@ -48,7 +48,7 @@ class ApifyLinkedInProvider(BaseAPIProvider):
                 
                 entries = []
                 # The returned dataset is an array of objects
-                for profile in data:
+                for profile in data[:3]: # Aggressive limit to protect free tier
                     entries.append({
                         # LinkedIn name / company mapping
                         "title": profile.get("fullName") or profile.get("firstName", "Unknown Person"),

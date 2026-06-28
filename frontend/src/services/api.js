@@ -35,8 +35,17 @@ export const hitlService = {
 
 export const agentService = {
   getAgents: async () => (await api.get('/api/agents')).data,
+  getCoreAgents: async () => (await api.get('/api/agents/core')).data,
+  getTools: async () => (await api.get('/api/agents/tools')).data,
   createAgent: async (data) => (await api.post('/api/agents', data)).data,
   deleteAgent: async (id) => (await api.delete(`/api/agents/${id}`)).data,
+  getAgentStreamUrl: (id) => `${API_URL}/api/agents/${id}/logs/stream`,
+};
+
+export const workflowService = {
+  getWorkflows: async () => (await api.get('/api/workflows')).data,
+  createWorkflow: async (data) => (await api.post('/api/workflows', data)).data,
+  deleteWorkflow: async (id) => (await api.delete(`/api/workflows/${id}`)).data,
 };
 
 export const triggerService = {

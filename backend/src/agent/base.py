@@ -37,7 +37,29 @@ class SafeAgentWrapper:
 
     async def __call__(self, state: GraphState) -> Dict[str, Any]:
         try:
-            return await self.agent(state)
+            import time
+            start_time = time.time()
+            result = await self.agent(state)
+            end_time = time.time()
+            
+            # Record what the agent did in the execution trace
+            trace_record = {
+                "agent": self.agent_name,
+                "timestamp": end_time,
+                "duration_seconds": end_time - start_time,
+                "recent_thoughts": result.get("recent_thoughts", []),
+                "updates": {k: v for k, v in result.items() if k not in ["recent_thoughts"]}
+            }
+            
+            # Append trace record to result
+            if "execution_trace" in result:
+                result["execution_trace"].append(trace_record)
+            else:
+                result["execution_trace"] = [trace_record]
+                
+            result["last_agent"] = self.agent_name
+                
+            return result
         except Exception as e:
             # LangGraph uses special exceptions for control flow (like interrupts). Let them propagate.
             if e.__class__.__name__ in ["GraphInterrupt", "NodeInterrupt"]:

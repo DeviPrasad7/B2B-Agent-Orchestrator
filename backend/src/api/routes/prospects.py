@@ -24,13 +24,13 @@ async def list_prospects(
     company_name: Optional[str] = Query(None),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    memory_service: MemoryService = Depends(get_memory_service),
+    memory_service: MemoryService = Depends(get_memory_service)
 ):
     filters = {
         "status": status,
         "company_name": company_name,
         "limit": limit,
-        "offset": offset,
+        "offset": offset
     }
     return await memory_service.list_prospects(filters)
 
@@ -61,14 +61,23 @@ class CreateProspectRequest(BaseModel):
     website: Optional[str] = None
     trigger_event: str = "manual_submission"
     simulate_failure: bool = False
+    custom_workflow_id: Optional[str] = None
 
 
 @router.post("")
 async def create_prospect(
     req: CreateProspectRequest,
     request: Request,
-    memory_service: MemoryService = Depends(get_memory_service),
+    memory_service: MemoryService = Depends(get_memory_service)
 ):
+    # Check cache for recent requests
+    cached_prospect = await memory_service.get_recent_prospect_by_company(req.company_name, days=7)
+    if cached_prospect:
+        if cached_prospect.status in ["PENDING", "PROCESSING"]:
+            # Pipeline is likely stalled/crashed, resume it using LangGraph checkpointing
+            await request.app.state.workflow_service.submit_prospect(None, thread_id=str(cached_prospect.id))
+        return {"status": "cached", "prospect_id": str(cached_prospect.id)}
+
     prospect_id = str(uuid4())
     state: GraphState = {
         "prospect_id": prospect_id,
@@ -86,7 +95,19 @@ async def create_prospect(
         "has_conflict": False,
         "tech_detection_status": "PENDING",
         "simulate_failure": req.simulate_failure,
+        "custom_workflow_id": req.custom_workflow_id,
     }
+
+    if req.custom_workflow_id:
+        from models.database import async_session, Workflow
+        from sqlalchemy import select
+        async with async_session() as session:
+            result = await session.execute(select(Workflow).where(Workflow.id == req.custom_workflow_id))
+            workflow = result.scalar_one_or_none()
+            if workflow:
+                state["custom_workflow_steps"] = workflow.steps
+            else:
+                state["custom_workflow_id"] = None
 
     await memory_service.save_prospect_state(state)
     await request.app.state.workflow_service.submit_prospect(state, thread_id=prospect_id)

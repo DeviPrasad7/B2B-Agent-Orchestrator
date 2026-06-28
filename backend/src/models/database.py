@@ -33,6 +33,7 @@ class Prospect(Base):
     created_at = Column(DateTime(timezone=True), default=get_utc_now)
     updated_at = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
     workflow_thread_id = Column(String, nullable=True)
+    custom_workflow_id = Column(Uuid, ForeignKey("workflows.id"), nullable=True)
 
     # Relationships
     hitl_requests = relationship("HITLRequest", back_populates="prospect", lazy="noload")
@@ -56,10 +57,19 @@ class CustomAgent(Base):
     __tablename__ = "custom_agents"
 
     id = Column(Uuid, primary_key=True, default=uuid.uuid4)
-    name = Column(String, unique=True, index=True, nullable=False)
+    name = Column(String, index=True, nullable=False)
     description = Column(String, nullable=False)
     system_prompt = Column(String, nullable=False)
     allowed_tools = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class Workflow(Base):
+    __tablename__ = "workflows"
+
+    id = Column(Uuid, primary_key=True, default=uuid.uuid4)
+    name = Column(String, index=True, nullable=False)
+    description = Column(String, nullable=True)
+    steps = Column(JSON, nullable=False, default=list)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 class Config(Base):

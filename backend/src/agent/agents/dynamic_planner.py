@@ -51,7 +51,47 @@ class DynamicPlannerNode(AgentNode):
                 "recent_thoughts": [f"Simulating failure, forcing retry on {last_agent}"]
             }
             
-        # 2. Prepare context for the LLM
+        # 2. Custom Workflow Enforcement
+        custom_workflow_steps = state.get("custom_workflow_steps")
+        if custom_workflow_steps:
+            # Find the first step in the sequence that hasn't been successfully completed
+            next_step = None
+            for step in custom_workflow_steps:
+                if step not in executed:
+                    next_step = step
+                    break
+                    
+            if not next_step:
+                logger.info("DynamicPlanner: Custom workflow complete.", prospect_id=prospect_id)
+                # Workflow complete, default to summary or end depending on what step we are at
+                return {"executed_agents": ["dynamic_planner_node"], "next_node": "__end__"}
+                
+            logger.info(f"DynamicPlanner: Following custom workflow, routing to {next_step}", prospect_id=prospect_id)
+            
+            # Check if this is a custom agent
+            try:
+                from models.database import async_session, CustomAgent
+                from sqlalchemy import select
+                async with async_session() as session:
+                    result = await session.execute(select(CustomAgent).where(CustomAgent.name == next_step))
+                    ca = result.scalar_one_or_none()
+                    if ca:
+                        return {
+                            "executed_agents": ["dynamic_planner_node", next_step],
+                            "next_node": "dynamic_agent_executor",
+                            "next_custom_agent": next_step,
+                            "recent_thoughts": [f"Routing to custom agent {next_step} as defined in workflow"]
+                        }
+            except Exception as e:
+                logger.error("Failed to fetch custom agent", error=str(e))
+                
+            return {
+                "executed_agents": ["dynamic_planner_node"],
+                "next_node": next_step,
+                "recent_thoughts": [f"Routing to {next_step} as defined in custom workflow"]
+            }
+
+        # 3. Prepare context for the LLM
         agents = self.registry.list_agents_with_descriptions()
         
         custom_agent_names = []
@@ -102,10 +142,12 @@ Data Gathered: {json.dumps(context_data, default=str)}
 Agents:
 {json.dumps(available_agents)}
 
-Rules:
+- Rules:
 - Choose the best next agent based on missing data.
+- **CRITICAL**: If a custom agent exists in the available agents list (i.e. agents dynamically added by the user), you MUST heavily consider using it to gather specialized data before proceeding to validation or summarization.
 - Once firmographic & tech stack data exist, do 'cross_validator_node' -> 'persona_matcher_node' -> 'contact_finder_node'.
-- Once all data is gathered, choose 'summarizer_node'.
+- Once contacts are found, choose 'outreach_generator_node'.
+- Once all data is gathered and outreach is drafted, choose 'summarizer_node'.
 - After 'summarizer_node', choose 'hitl_gateway_node'.
 - After 'hitl_gateway_node', choose 'output_dispatcher_node'.
 - Return ONLY JSON.
@@ -141,10 +183,10 @@ Format:
             parsed = json.loads(clean_response)
             next_node = parsed.get("next_node")
             
-            # Validate against registry
-            valid_nodes = [a["name"] for a in agents] + ["__end__"]
+            # Validate against registry and available (unexecuted) agents
+            valid_nodes = [a["name"] for a in available_agents] + ["__end__"]
             if next_node not in valid_nodes:
-                raise ValueError(f"LLM suggested invalid node: {next_node}")
+                raise ValueError(f"LLM suggested invalid or already executed node: {next_node}")
                 
             logger.info(
                 "DynamicPlanner: LLM selected next node",
@@ -178,6 +220,13 @@ Format:
             
             for node in sequence:
                 if node not in executed:
+                    if node in custom_agent_names:
+                        return {
+                            "executed_agents": ["dynamic_planner_node", node],
+                            "next_node": "dynamic_agent_executor",
+                            "next_custom_agent": node,
+                            "recent_thoughts": [f"Fallback: Routing to custom agent {node}"]
+                        }
                     return {"executed_agents": ["dynamic_planner_node"], "next_node": node, "recent_thoughts": [f"Fallback: Routing to {node}"]}
             
             return {"executed_agents": ["dynamic_planner_node"], "next_node": "__end__", "recent_thoughts": ["Fallback: Pipeline complete"]}

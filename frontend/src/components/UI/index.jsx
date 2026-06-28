@@ -40,10 +40,11 @@ export function Input({
   required = false, 
   placeholder = '',
   component = 'input',
-  className = ''
+  className = '',
+  style = {}
 }) {
   return (
-    <div className={`input-group ${className}`}>
+    <div className={`input-group ${className}`} style={style}>
       {label && <label className="input-label">{label} {required && <span style={{color: 'var(--danger)'}}>*</span>}</label>}
       {component === 'textarea' ? (
         <textarea 
@@ -88,11 +89,11 @@ export function PageHeader({ title, description, actions = null }) {
   );
 }
 
-export function Modal({ isOpen, onClose, title, children, footer, icon = null }) {
+export function Modal({ isOpen, onClose, title, children, footer, icon = null, style = {} }) {
   if (!isOpen) return null;
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
+      <div className="modal-content" style={style} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <div className="modal-title">
             {icon && <span style={{ color: 'var(--primary-cyan)', display: 'flex', alignItems: 'center' }}>{icon}</span>}

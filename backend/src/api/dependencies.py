@@ -31,3 +31,4 @@ def get_memory_service() -> MemoryService:
     so MemoryService can create short-lived sessions for each DB operation.
     """
     return MemoryService(async_session)
+

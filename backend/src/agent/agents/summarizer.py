@@ -18,7 +18,7 @@ class SummarizerNode(AgentNode):
         prospect_id = state.get("prospect_id", "unknown")
         try:
             cb_state = self.toolbox.circuit_breaker.check_health("LLM_API")
-            fallback_summary = '{"overview": "Fallback", "strengths": "Unknown", "risks": "Unknown", "recommendation": "Review manually"}'
+            fallback_summary = "Fallback: Review manually."
             if cb_state == CircuitBreakerState.OPEN:
                 MonitoringService.log_warning(prospect_id, "LLM circuit open, using fallback")
                 return {
@@ -27,8 +27,19 @@ class SummarizerNode(AgentNode):
                 }
             
             firmographics = state.get("data", {}).get("firmographics", {})
-            prompt = f"Summarize this prospect: {firmographics}. Output JSON."
-            summary = await self.toolbox.generate_text(prompt, fallback_summary)
+            competitor_context = state.get("data", {}).get("competitors_context", "")
+            
+            prompt = f"""
+            Summarize this prospect and their viability as a target customer based on the following data:
+            Firmographics: {firmographics}
+            
+            Additional Competitor Context / SWOT:
+            {competitor_context}
+            
+            Output a highly polished Markdown report. Use H3 and H4 headers, bullet points, and bold text to make it easily scannable. Include an Overview, Strengths, Risks/Weaknesses, and a final Recommendation. Do not wrap in a JSON block, just output the raw markdown string.
+            """
+            
+            summary = await self.toolbox.generate_text(prompt, fallback_summary, require_json=False)
             
             if summary == fallback_summary:
                 self.toolbox.circuit_breaker.record_failure("LLM_API")
@@ -44,6 +55,6 @@ class SummarizerNode(AgentNode):
             self.toolbox.circuit_breaker.record_failure("LLM_API")
             return {
                 "executed_agents": ["summarizer_node"],
-                "data": {"summary_object": '{"overview": "Fallback", "strengths": "Unknown", "risks": "Unknown", "recommendation": "Review manually"}'},
+                "data": {"summary_object": "Fallback: Error generating summary."},
                 "errors": [f"summarizer_node: {str(e)}"]
             }

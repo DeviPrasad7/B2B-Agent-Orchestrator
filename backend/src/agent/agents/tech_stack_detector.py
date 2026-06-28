@@ -25,7 +25,7 @@ class TechStackDetectorNode(AgentNode):
                 return {"executed_agents": ["tech_stack_detector_node"]}
                 
             page = await self.toolbox.fetch_webpage(website_url, 10)
-            stack = self.toolbox.detect_tech_stack(page.htmlContent, website_url)
+            stack = await self.toolbox.detect_tech_stack(page.htmlContent, website_url)
             
             self.toolbox.circuit_breaker.record_success("TECH_DETECTION_API")
             return {

@@ -10,9 +10,9 @@ export default function WorkflowGraph({ stateLogs, currentState }) {
   let activeNode = 'init';
   if (status === 'HITL_REQUIRED') activeNode = 'hitl';
   else if (status === 'APPROVED' || status === 'REJECTED') activeNode = 'output';
-  else if (executedAgents.includes('decision_node')) activeNode = 'evaluator';
-  else if (executedAgents.includes('enrichment_agent')) activeNode = 'enricher';
-  else if (executedAgents.includes('scraper_agent') || executedAgents.includes('fetch_prospect_data')) activeNode = 'scraper';
+  else if (executedAgents.includes('score_node') || executedAgents.includes('cross_validator_node') || executedAgents.includes('persona_matcher_node')) activeNode = 'evaluator';
+  else if (executedAgents.includes('enricher_node') || executedAgents.includes('contact_finder_node')) activeNode = 'enricher';
+  else if (executedAgents.includes('researcher_node') || executedAgents.includes('tech_stack_detector_node')) activeNode = 'scraper';
   
   const nodes = [
     { id: 'init', label: 'Initialization', icon: <Activity size={18} /> },
@@ -115,7 +115,7 @@ export default function WorkflowGraph({ stateLogs, currentState }) {
           // If it's a state_update, maybe show something specific
           let displayMsg = log.type;
           if (log.type === 'state_update') {
-            displayMsg = `Agent state updated: ${log.payload?.last_agent || 'evaluating'}...`;
+            displayMsg = `Agent state updated: ${log.payload?.last_agent || log.payload?.current_trigger_event || 'evaluating'}...`;
           } else if (log.type === 'tool_call') {
             displayMsg = `Executing tool: ${log.payload?.tool_name}`;
           }

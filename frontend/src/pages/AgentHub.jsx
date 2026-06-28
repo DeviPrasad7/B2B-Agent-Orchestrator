@@ -3,6 +3,7 @@ import { PageHeader, Button, Card, Badge, Modal, Input } from '../components/UI'
 import { Plus, Zap, Activity, Cpu, Database, Search, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { agentService } from '../services/api';
+import AgentLogsPanel from '../components/AgentLogsPanel';
 
 const CoreBot = () => (
   <div style={{ width: '100%', height: '160px', background: 'linear-gradient(135deg, #da775615, #da775605)', borderBottom: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
@@ -89,132 +90,45 @@ const coreAgents = [
     isCore: true,
     actionLabel: 'Test Enricher',
     actionRoute: '/enricher-sandbox'
+  },
+  {
+    id: 'custom-fleet',
+    name: 'Custom Agents Fleet',
+    role: 'Specialized Agents',
+    description: 'Manage and monitor all custom agents trained to perform domain-specific data retrieval and processing.',
+    tools: ['Custom LLM Prompts', 'External APIs'],
+    icon: <Cpu size={12} style={{ marginRight: '4px' }}/>,
+    visual: <CustomBot />,
+    isCore: true,
+    actionLabel: 'Manage Custom Agents',
+    actionRoute: '/custom-agents'
+  },
+  {
+    id: 'workflow-studio',
+    name: 'Workflow Studio',
+    role: 'Orchestration Builder',
+    description: 'Build, name, and use custom sequences of agents. Connect your custom agents into a tailored pipeline.',
+    tools: ['Visual Builder', 'Pipeline Routing'],
+    icon: <Database size={12} style={{ marginRight: '4px' }}/>,
+    visual: <CoreBot />,
+    isCore: true,
+    actionLabel: 'Open Studio',
+    actionRoute: '/workflow-studio'
   }
 ];
 
 export default function AgentHub() {
   const navigate = useNavigate();
-  const [agents, setAgents] = useState(coreAgents);
-  const [loading, setLoading] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState({ name: '', description: '', system_prompt: '', allowed_tools: '' });
-
-  const fetchAgents = async () => {
-    try {
-      const data = await agentService.getAgents();
-      const customAgents = (data || []).map(a => ({
-        id: a.id,
-        name: a.name,
-        role: 'Custom Agent',
-        description: a.description,
-        tools: a.allowed_tools || [],
-        icon: <Cpu size={12} style={{ marginRight: '4px' }}/>,
-        visual: <CustomBot />,
-        isCore: false,
-        actionLabel: 'Inspect Logs',
-        actionRoute: `/logs/${a.id}`
-      }));
-      setAgents([...coreAgents, ...customAgents]);
-    } catch (error) {
-      console.error('Failed to fetch custom agents:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchAgents();
-  }, []);
-
-  const handleAddSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      await agentService.createAgent({
-        ...formData,
-        allowed_tools: formData.allowed_tools.split(',').map(s => s.trim()).filter(Boolean)
-      });
-      setShowAddForm(false);
-      setFormData({ name: '', description: '', system_prompt: '', allowed_tools: '' });
-      fetchAgents();
-    } catch (error) {
-      console.error('Failed to create agent:', error);
-      alert('Failed to create agent.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if(!window.confirm('Delete this custom agent?')) return;
-    try {
-      await agentService.deleteAgent(id);
-      fetchAgents();
-    } catch (error) {
-      console.error('Failed to delete agent:', error);
-      alert('Failed to delete agent.');
-    }
-  };
+  const [agents] = useState(coreAgents);
+  const [loading] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState(null);
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', width: '100%', paddingBottom: '100px' }}>
       <PageHeader 
         title="Agent Directory" 
         description="Monitor and manage the autonomous agents executing tasks in your workspace."
-        actions={
-          <Button variant="primary" icon={<Plus size={16} />} onClick={() => setShowAddForm(true)}>
-            Train New Agent
-          </Button>
-        }
       />
-
-      <Modal 
-        isOpen={showAddForm} 
-        onClose={() => setShowAddForm(false)} 
-        title="Train Custom Agent"
-        icon={<Cpu size={20} />}
-        footer={
-          <>
-            <Button onClick={() => setShowAddForm(false)}>Cancel</Button>
-            <Button variant="primary" onClick={handleAddSubmit} disabled={submitting || !formData.name}>
-              {submitting ? 'Initializing...' : 'Deploy Agent'}
-            </Button>
-          </>
-        }
-      >
-        <form onSubmit={handleAddSubmit} className="flex-col">
-          <Input 
-            label="Agent Name" 
-            value={formData.name} 
-            onChange={(e) => setFormData({...formData, name: e.target.value})} 
-            required 
-            placeholder="e.g. Contract Analyzer"
-          />
-          <Input 
-            label="Description" 
-            value={formData.description} 
-            onChange={(e) => setFormData({...formData, description: e.target.value})} 
-            placeholder="What does this agent do?"
-            required
-          />
-          <Input 
-            component="textarea"
-            label="System Prompt" 
-            value={formData.system_prompt} 
-            onChange={(e) => setFormData({...formData, system_prompt: e.target.value})} 
-            placeholder="You are an expert at..."
-            required
-          />
-          <Input 
-            label="Allowed Tools (comma separated)" 
-            value={formData.allowed_tools} 
-            onChange={(e) => setFormData({...formData, allowed_tools: e.target.value})} 
-            placeholder="e.g. WebSearch, Calculator"
-          />
-          <button type="submit" style={{ display: 'none' }}></button>
-        </form>
-      </Modal>
 
       {loading ? (
         <div className="spinner"></div>
@@ -250,7 +164,17 @@ export default function AgentHub() {
                 </div>
 
                 <div className="flex-row gap-2">
-                  <Button variant={agent.isCore ? 'primary' : 'secondary'} onClick={() => navigate(agent.actionRoute)} style={{ flex: 1 }}>
+                  <Button 
+                    variant={agent.isCore ? 'primary' : 'secondary'} 
+                    onClick={() => {
+                      if (agent.isCore) {
+                        navigate(agent.actionRoute);
+                      } else {
+                        setSelectedAgent(agent.fullAgentRef);
+                      }
+                    }} 
+                    style={{ flex: 1 }}
+                  >
                     {agent.actionLabel}
                   </Button>
                   {!agent.isCore && (
@@ -261,6 +185,13 @@ export default function AgentHub() {
             </Card>
           ))}
         </div>
+      )}
+
+      {selectedAgent && (
+        <AgentLogsPanel 
+          agent={selectedAgent} 
+          onClose={() => setSelectedAgent(null)} 
+        />
       )}
     </div>
   );

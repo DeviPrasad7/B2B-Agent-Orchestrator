@@ -7,23 +7,32 @@ export default function EnricherSandbox() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
-  const handleEnrich = (e) => {
+  const handleEnrich = async (e) => {
     e.preventDefault();
     if (!company) return;
     setLoading(true);
     setResult(null);
 
-    // Mock enrichment sequence
-    setTimeout(() => {
-      setResult({
-        name: company || 'Example Corp',
-        employeeCount: 450,
-        revenue: '$50M - $100M',
-        techStack: ['React', 'Python', 'AWS', 'Docker'],
-        status: 'Correlated (Clearbit + Crunchbase)'
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/sandbox/enrich`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company })
       });
+      if (!response.ok) throw new Error(`Error: ${response.status}`);
+      const data = await response.json();
+      setResult(data);
+    } catch (err) {
+      setResult({
+        name: company,
+        employeeCount: 0,
+        revenue: 'Unknown',
+        techStack: [],
+        status: 'Failed to enrich'
+      });
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -42,6 +51,7 @@ export default function EnricherSandbox() {
               onChange={e => setCompany(e.target.value)} 
               placeholder="e.g. Acme Corp" 
               required 
+              style={{ marginBottom: 0 }}
             />
           </div>
           <Button type="submit" variant="primary" icon={loading ? <Loader className="spin" size={16}/> : <Database size={16}/>} disabled={loading}>

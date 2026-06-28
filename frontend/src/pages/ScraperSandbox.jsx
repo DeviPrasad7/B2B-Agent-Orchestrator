@@ -1,29 +1,39 @@
 import React, { useState } from 'react';
 import { PageHeader, Card, Button, Input, Badge } from '../components/UI';
 import { Search, Code, CheckCircle, Loader } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 export default function ScraperSandbox() {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
 
-  const handleScrape = (e) => {
+  const handleScrape = async (e) => {
     e.preventDefault();
     if (!url) return;
     setLoading(true);
     setResult(null);
 
-    // Mock scraping sequence
-    setTimeout(() => {
-      setResult({
-        title: 'Example Corp - Enterprise AI Solutions',
-        metaDescription: 'Leading provider of enterprise AI agents and automated workflows.',
-        extractedLinks: 42,
-        keyText: 'We build autonomous systems for B2B scale...',
-        status: 'Success'
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/sandbox/scrape`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
       });
+      if (!response.ok) throw new Error(`Error: ${response.status}`);
+      const data = await response.json();
+      setResult(data);
+    } catch (err) {
+      setResult({
+        title: 'Error',
+        metaDescription: err.message,
+        extractedLinks: 0,
+        keyText: 'Failed to scrape the URL.',
+        status: 'Failed'
+      });
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
 
   return (
@@ -37,16 +47,18 @@ export default function ScraperSandbox() {
         <form onSubmit={handleScrape} style={{ display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
           <div style={{ flex: 1 }}>
             <Input 
-              label="Target Domain" 
+              label="Target URL"
               value={url} 
               onChange={e => setUrl(e.target.value)} 
               placeholder="https://example.com" 
               required 
+              style={{ marginBottom: 0 }}
             />
           </div>
           <Button type="submit" variant="primary" icon={loading ? <Loader className="spin" size={16}/> : <Search size={16}/>} disabled={loading}>
             {loading ? 'Scraping...' : 'Extract Data'}
           </Button>
+
         </form>
       </Card>
 
@@ -83,9 +95,9 @@ export default function ScraperSandbox() {
                 <div style={{ fontSize: '14px', color: 'var(--text-primary)' }}>{result.extractedLinks} internal URLs</div>
               </div>
               <div>
-                <strong style={{ display: 'block', fontSize: '12px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Raw Text Snippet</strong>
-                <div style={{ fontSize: '13px', color: 'var(--text-secondary)', background: 'var(--bg-panel)', padding: '12px', borderRadius: '4px', fontFamily: 'monospace', marginTop: '8px' }}>
-                  {result.keyText}
+                <strong style={{ display: 'block', fontSize: '12px', color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Extracted Markdown</strong>
+                <div className="markdown-summary" style={{ fontSize: '13px', color: 'var(--text-secondary)', background: 'var(--bg-panel)', padding: '12px', borderRadius: '4px', marginTop: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+                  <ReactMarkdown>{result.keyText}</ReactMarkdown>
                 </div>
               </div>
             </div>

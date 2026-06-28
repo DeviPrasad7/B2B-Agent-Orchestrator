@@ -58,23 +58,39 @@ class DynamicAgentExecutorNode(AgentNode):
             prospect_id=prospect_id,
         )
 
-        prompt = (
-            f"{agent_def.system_prompt}\n\n"
-            f"Current Gathered Data: {json.dumps(state.get('data', {}), default=str)}"
-        )
         fallback = json.dumps({"output": "Custom agent produced no output."})
 
         try:
-            response = await self.toolbox.generate_text(
-                prompt=prompt,
-                fallback=fallback,
-            )
+            from langgraph.prebuilt import create_react_agent
+            from ..tools import get_agent_tools
+
+            llm = self.toolbox.get_llm(strategy="heavy")
+            available_tools_dict = get_agent_tools(self.toolbox, agent_id=str(agent_def.id))
+            
+            allowed_keys = [t.strip() for t in agent_def.allowed_tools] if agent_def.allowed_tools else []
+            active_tools = [available_tools_dict[k] for k in allowed_keys if k in available_tools_dict]
+
+            if active_tools:
+                react_agent = create_react_agent(llm, tools=active_tools, state_modifier=agent_def.system_prompt)
+                user_msg = f"Task: Execute your instructions based on the data.\nCurrent Gathered Data: {json.dumps(state.get('data', {}), default=str)}"
+                result = await react_agent.ainvoke({"messages": [("user", user_msg)]})
+                response = result["messages"][-1].content
+            else:
+                # Fallback to simple generation if no tools
+                prompt = (
+                    f"{agent_def.system_prompt}\n\n"
+                    f"Current Gathered Data: {json.dumps(state.get('data', {}), default=str)}"
+                )
+                response = await self.toolbox.generate_text(
+                    prompt=prompt,
+                    fallback=fallback,
+                )
         except Exception as exc:
-            logger.error("DynamicAgentExecutor: LLM call failed", error=str(exc))
+            logger.error("DynamicAgentExecutor: Agent execution failed", error=str(exc))
             response = fallback
 
         # Return delta only – do NOT mutate/spread the full state dict
         return {
             "data": {f"{target_agent_name}_output": response},
-            "executed_agents": ["dynamic_agent_executor"],
+            "executed_agents": ["dynamic_agent_executor", target_agent_name],
         }

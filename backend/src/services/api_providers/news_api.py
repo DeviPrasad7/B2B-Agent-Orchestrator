@@ -32,7 +32,7 @@ class NewsAPIProvider(BaseAPIProvider):
             "q": keywords,
             "apiKey": api_key,
             "sortBy": "publishedAt",
-            "pageSize": 10  # Limiting the number to prevent flooding
+            "pageSize": 3  # Aggressively limiting the number to prevent free-tier LLM flooding
         }
 
         try:

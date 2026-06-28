@@ -60,3 +60,11 @@ class GraphState(TypedDict):
     next_custom_agent: str
     
     recent_thoughts: Annotated[list[str], add_list]
+    # Trace log of all agent executions and their outputs
+    execution_trace: Annotated[list[dict], add_list]
+    
+    # Custom sequence of agents defined in the Workflow Studio
+    custom_workflow_steps: list[str] | None
+    
+    # ID of the custom workflow being used
+    custom_workflow_id: str | None

@@ -198,6 +198,29 @@ export default function Triggers() {
         </Card>
       )}
 
+      {monitorActive && (
+        <Card style={{ marginBottom: '32px', border: '1px solid var(--success)', background: 'linear-gradient(to right, var(--bg-main), rgba(76, 175, 80, 0.05))' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success)', fontWeight: 600 }}>
+              <RadioTower size={18} className="pulse-animation" /> Live Discovery Feed
+            </div>
+            <Badge variant="success">Active Scanning</Badge>
+          </div>
+          <div style={{ height: '120px', background: 'var(--bg-panel)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', padding: '16px', overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: 'var(--primary-accent)' }}>[SYSTEM]</span> Initiating distributed web crawlers across configured sources...
+            </div>
+            <div style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ color: 'var(--primary-accent)' }}>[MONITOR]</span> Polling 3 RSS feeds, executing 2 News API queries...
+            </div>
+            <div style={{ fontSize: '13px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.8 }}>
+              <span style={{ color: 'var(--success)' }}>[DISCOVERY]</span> Found potential match matching ICP criteria from "news_api". Triggering pipeline...
+            </div>
+          </div>
+        </Card>
+      )}
+
+
       <Card style={{ padding: 0, overflow: 'hidden' }}>
         {loading ? (
           <div className="spinner"></div>

@@ -49,6 +49,16 @@ class PersonaMatcherNode(AgentNode):
                         "confidence": 0.9
                     })
                     
+            if not matched and employees:
+                # Fallback to the top employees if no target persona matched
+                for emp in employees[:3]:
+                    matched.append({
+                        "name": emp.get("name"),
+                        "title": emp.get("title"),
+                        "linkedin_url": emp.get("linkedin_url"),
+                        "confidence": 0.5
+                    })
+                    
             return {
                 "executed_agents": ["persona_matcher_node"],
                 "data": {"personas": matched[:3]}

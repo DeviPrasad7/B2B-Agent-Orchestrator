@@ -1,7 +1,9 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, UserCheck, Settings, Activity, Bot, Database } from 'lucide-react';
+import { Toaster } from 'react-hot-toast';
 import './index.css';
+
 
 const AgentHub = React.lazy(() => import('./pages/AgentHub'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
@@ -10,6 +12,8 @@ const Configuration = React.lazy(() => import('./pages/Configuration'));
 const Triggers = React.lazy(() => import('./pages/Triggers'));
 const ScraperSandbox = React.lazy(() => import('./pages/ScraperSandbox'));
 const EnricherSandbox = React.lazy(() => import('./pages/EnricherSandbox'));
+const CustomAgents = React.lazy(() => import('./pages/CustomAgents'));
+const WorkflowStudio = React.lazy(() => import('./pages/WorkflowStudio'));
 
 function FloatingDock() {
   const location = useLocation();
@@ -62,10 +66,12 @@ function MainLayout({ children }) {
         <Suspense fallback={<div className="spinner"></div>}>
           {children}
         </Suspense>
+        <Toaster position="top-right" />
       </main>
     </div>
   );
 }
+
 
 export default function App() {
   return (
@@ -79,6 +85,8 @@ export default function App() {
           <Route path="/triggers" element={<Triggers />} />
           <Route path="/scraper-sandbox" element={<ScraperSandbox />} />
           <Route path="/enricher-sandbox" element={<EnricherSandbox />} />
+          <Route path="/custom-agents" element={<CustomAgents />} />
+          <Route path="/workflow-studio" element={<WorkflowStudio />} />
         </Routes>
       </MainLayout>
     </Router>

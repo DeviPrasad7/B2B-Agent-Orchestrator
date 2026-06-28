@@ -30,11 +30,26 @@ class WorkflowService:
             persona = await config_service.get_persona()
             thresholds = await config_service.get_thresholds()
             
-            state["config"] = {
-                "icp": icp.model_dump() if icp else {},
-                "persona": persona.model_dump() if persona else {},
-                "thresholds": thresholds.model_dump() if thresholds else {}
-            }
+            if state is not None:
+                state["config"] = {
+                    "icp": icp.model_dump() if icp else {},
+                    "persona": persona.model_dump() if persona else {},
+                    "thresholds": thresholds.model_dump() if thresholds else {}
+                }
+                
+                # Fetch custom workflow if provided
+                if state.get("custom_workflow_id"):
+                    from models.database import Workflow
+                    from sqlalchemy import select
+                    import uuid
+                    try:
+                        wid = uuid.UUID(state["custom_workflow_id"])
+                        w_result = await session.execute(select(Workflow).where(Workflow.id == wid))
+                        workflow = w_result.scalar_one_or_none()
+                        if workflow:
+                            state["custom_workflow_steps"] = workflow.steps
+                    except Exception as e:
+                        logger.error("Failed to load custom workflow", error=str(e))
             
         async def run_workflow(configured_state: GraphState):
             logger.info("Starting workflow for prospect", thread_id=thread_id)
@@ -71,12 +86,19 @@ class WorkflowService:
                                     })
                                     
                                 # Broadcast state update so dashboard can update UI
+                                current_state = await self._app.aget_state(config)
                                 await pubsub_broker.publish(thread_id, {
                                     "type": "state_update",
                                     "agent": "SYSTEM",
                                     "message": f"State updated by {node_name}",
-                                    "payload": node_update
+                                    "payload": current_state.values
                                 })
+                                
+                                # Persist current state values to database so UI fetches aren't stuck in PENDING
+                                async with async_session() as session:
+                                    from services.memory_service import MemoryService
+                                    ms = MemoryService(lambda: session)
+                                    await ms.save_prospect_state(current_state.values)
                 
                 # Check if the graph paused due to an interrupt
                 state_snapshot = await self._app.aget_state(config)
@@ -114,8 +136,39 @@ class WorkflowService:
                 if corrections:
                     resume_payload["edits"] = corrections
                     
+                from core.pubsub import pubsub_broker
+                
                 async for event in self._app.astream_events(Command(resume=resume_payload), config=config, version="v2"):
-                    await pubsub_broker.publish(thread_id, event)
+                    event_type = event.get("event")
+                    node_name = event.get("name", "SYSTEM")
+                    
+                    if event_type == "on_chain_end" and node_name.endswith("_node"):
+                        output = event.get("data", {}).get("output", {})
+                        if isinstance(output, dict):
+                            node_update = output.get(node_name, output)
+                            if isinstance(node_update, dict):
+                                thoughts = node_update.get("recent_thoughts", [])
+                                if thoughts:
+                                    for thought in thoughts:
+                                        await pubsub_broker.publish(thread_id, {
+                                            "type": "thought",
+                                            "agent": node_name.replace("_node", ""),
+                                            "message": thought
+                                        })
+                                else:
+                                    await pubsub_broker.publish(thread_id, {
+                                        "type": "action",
+                                        "agent": node_name.replace("_node", ""),
+                                        "message": f"Completed execution."
+                                    })
+                                    
+                                current_state = await self._app.aget_state(config)
+                                await pubsub_broker.publish(thread_id, {
+                                    "type": "state_update",
+                                    "agent": "SYSTEM",
+                                    "message": f"State updated by {node_name}",
+                                    "payload": current_state.values
+                                })
                 
                 state_snapshot = await self._app.aget_state(config)
                 if not state_snapshot.next:

@@ -39,7 +39,9 @@ class EnricherNode(AgentNode):
                 "executed_agents": ["enricher_node"],
                 "data": {
                     "firmographics": firmographics,
-                    "data_sources": data_sources
+                    "data_sources": data_sources,
+                    "employee_count": firmographics.get("employeeCount"),
+                    "revenue": firmographics.get("revenue"),
                 }
             }
         except Exception as e:

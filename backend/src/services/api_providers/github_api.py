@@ -13,11 +13,8 @@ class GitHubAPIProvider(BaseAPIProvider):
     SEARCH_BASE_URL = "https://api.github.com/search/repositories"
 
     async def fetch_entries(self, config: dict[str, Any]) -> list[dict[str, Any]]:
-        api_key = settings.GITHUB_TOKEN
-        if not api_key:
-            logger.warning("GITHUB_TOKEN is not set. Cannot fetch GitHub API entries.")
-            return []
-            
+        api_key = getattr(settings, "GITHUB_TOKEN", None)
+        
         # The frontend/config will provide the search query (e.g. 'tetris stars:>500' or 'ai-agent')
         # We can map 'keywords' or 'url' to the query 'q'
         query = config.get("keywords") or config.get("query") or config.get("url")
@@ -35,13 +32,15 @@ class GitHubAPIProvider(BaseAPIProvider):
             "q": query,
             "sort": config.get("sort", "stars"),
             "order": config.get("order", "desc"),
-            "per_page": 10 # Limiting the results
+            "per_page": 3 # Aggressively limit results to save free-tier LLM bandwidth
         }
 
         headers = {
-            "Accept": "application/vnd.github.v3+json",
-            "Authorization": f"token {api_key}"
+            "Accept": "application/vnd.github.v3+json"
         }
+        
+        if api_key:
+            headers["Authorization"] = f"token {api_key}"
 
         try:
             async with httpx.AsyncClient() as client:
