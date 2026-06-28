@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # ── Optional service keys ────────────────────────────────────────────
     SCRAPER_API_KEY: Optional[str] = None
     ENRICHMENT_API_KEY: Optional[str] = None
+    NEWS_API_KEY: Optional[str] = None
+    GITHUB_TOKEN: Optional[str] = None
+    APIFY_API_TOKEN: Optional[str] = None
 
     # ── Operational tunables ─────────────────────────────────────────────
     MAX_RETRIES: int = 3

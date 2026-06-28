@@ -7,7 +7,7 @@ export default function Triggers() {
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [formData, setFormData] = useState({ type: 'rss', url: '', interval_seconds: 3600, enabled: true });
+  const [formData, setFormData] = useState({ type: 'rss', url: '', interval_seconds: 3600, enabled: true, payload: '' });
   const [submitting, setSubmitting] = useState(false);
   const [monitorActive, setMonitorActive] = useState(false); // Mock state
 
@@ -61,9 +61,34 @@ export default function Triggers() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await triggerService.createSource(formData);
+      const payload = {
+        type: formData.type,
+        url: formData.url,
+        interval_seconds: formData.interval_seconds,
+        enabled: formData.enabled,
+        config: {}
+      };
+      // Map url to keywords/query for specific APIs
+      if (formData.type === 'news_api') {
+        payload.config.keywords = formData.url;
+        payload.url = null;
+      } else if (formData.type === 'github_api') {
+        payload.config.query = formData.url;
+        payload.url = null;
+      } else if (formData.type === 'apify_linkedin') {
+        try {
+           payload.config.payload = JSON.parse(formData.payload);
+        } catch (e) {
+           alert("Invalid JSON in Apify payload");
+           setSubmitting(false);
+           return;
+        }
+        payload.url = null;
+      }
+
+      await triggerService.createSource(payload);
       setShowAddForm(false);
-      setFormData({ type: 'rss', url: '', interval_seconds: 3600, enabled: true });
+      setFormData({ type: 'rss', url: '', interval_seconds: 3600, enabled: true, payload: '' });
       fetchSources();
     } catch (error) {
       console.error('Failed to add trigger source:', error);
@@ -77,6 +102,8 @@ export default function Triggers() {
     switch(type) {
       case 'rss': return <Rss size={14} />;
       case 'news_api': return <Globe2 size={14} />;
+      case 'github_api': return <Network size={14} />;
+      case 'apify_linkedin': return <Network size={14} color="var(--primary-accent)"/>;
       default: return <RadioTower size={14} />;
     }
   };
@@ -114,21 +141,46 @@ export default function Triggers() {
                 <select 
                   className="input-field" 
                   value={formData.type}
-                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  onChange={(e) => {
+                    const newType = e.target.value;
+                    const defaultInterval = newType === 'apify_linkedin' ? 604800 : 3600;
+                    const defaultPayload = newType === 'apify_linkedin' ? '{\n  "searchQuery": "Software Engineer",\n  "currentJobTitleFilter": ["Senior Developer"],\n  "locationsFilter": ["United States"],\n  "maxPagesPerQuery": 1\n}' : '';
+                    setFormData({...formData, type: newType, interval_seconds: defaultInterval, payload: defaultPayload});
+                  }}
                   style={{ appearance: 'none', background: 'var(--bg-surface)' }}
                 >
                   <option value="rss">RSS Feed</option>
                   <option value="news_api">News API</option>
+                  <option value="github_api">GitHub API</option>
+                  <option value="apify_linkedin">Apify LinkedIn Search</option>
                   <option value="job_board">Job Board</option>
                 </select>
               </div>
-              <Input 
-                label="Target URL" 
-                value={formData.url} 
-                onChange={(e) => setFormData({...formData, url: e.target.value})} 
-                required 
-                placeholder="https://news.ycombinator.com/rss"
-              />
+              {formData.type === 'apify_linkedin' ? (
+                <div className="input-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="input-label">JSON Payload</label>
+                  <textarea
+                    className="input-field"
+                    value={formData.payload}
+                    onChange={(e) => setFormData({...formData, payload: e.target.value})}
+                    rows="5"
+                    style={{ fontFamily: 'monospace' }}
+                    required
+                  />
+                </div>
+              ) : (
+                <Input 
+                  label={['news_api', 'github_api'].includes(formData.type) ? "Search Query" : "Target URL"} 
+                  value={formData.url} 
+                  onChange={(e) => setFormData({...formData, url: e.target.value})} 
+                  required 
+                  placeholder={
+                    formData.type === 'news_api' ? "e.g. AI startup" : 
+                    formData.type === 'github_api' ? "e.g. ai-agent stars:>500" :
+                    "https://example.com/rss"
+                  }
+                />
+              )}
               <Input 
                 type="number"
                 label="Polling Interval (Seconds)" 
@@ -138,7 +190,7 @@ export default function Triggers() {
               />
             </div>
             <div className="flex-row justify-end mt-4" style={{ marginTop: '24px' }}>
-              <Button type="submit" variant="primary" disabled={submitting || !formData.url}>
+              <Button type="submit" variant="primary" disabled={submitting || (!formData.url && formData.type !== 'apify_linkedin') || (!formData.payload && formData.type === 'apify_linkedin')}>
                 {submitting ? 'Saving...' : 'Save Source'}
               </Button>
             </div>

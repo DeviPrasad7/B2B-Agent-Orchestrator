@@ -130,9 +130,6 @@ class Toolbox:
     async def fetch_rss_entries(self, url: str) -> list[dict]:
         return await self._enrichment_service.fetch_rss_entries(url)
 
-    async def fetch_news_api(self, keywords: str) -> list[dict]:
-        return await self._enrichment_service.fetch_news_api(keywords)
-
     async def fetch_jobs(self, company: str) -> list[dict]:
         return await self._enrichment_service.fetch_jobs(company)
 

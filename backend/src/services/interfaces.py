@@ -80,10 +80,6 @@ class EnrichmentServiceProtocol(Protocol):
         """Fetch RSS feed entries from a URL."""
         ...
 
-    async def fetch_news_api(self, keywords: str) -> list[dict]:
-        """Fetch news articles matching keywords."""
-        ...
-
     async def fetch_jobs(self, company: str) -> list[dict]:
         """Fetch job postings for a company."""
         ...

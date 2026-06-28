@@ -18,11 +18,13 @@ from services.memory_service import MemoryService
 from services.workflow_service import WorkflowService
 from agent.state import GraphState
 from agent.utils import Toolbox
+from services.api_providers import APIProviderFactory
 
 class TriggerMonitor:
     def __init__(self, toolbox: Toolbox, workflow_service: WorkflowService):
         self.toolbox = toolbox
         self.workflow_service = workflow_service
+        self.provider_factory = APIProviderFactory()
         self._running = False
         self._task = None
 
@@ -87,16 +89,28 @@ class TriggerMonitor:
         memory_service = MemoryService(async_session)
 
         for source in sources:
+            # Global safety sleep: Ensure we never hit burst rate limits (> 5 req/sec) 
+            # across our various API providers (News API, GitHub).
+            await asyncio.sleep(0.5)
+            
             try:
                 entries = []
-                if source.type == "rss":
+                provider = self.provider_factory.get_provider(source.type)
+                if provider:
+                    config = source.config or {}
+                    # Add URL to config if present for generic providers
+                    if source.url:
+                        config["url"] = source.url
+                    entries = await provider.fetch_entries(config)
+                elif source.type == "rss":
+                    # Keep RSS in toolbox for now unless we migrate it to a provider too
                     entries = await self.toolbox.fetch_rss_entries(source.url)
-                elif source.type == "news_api":
-                    keywords = source.config.get("keywords", "") if source.config else ""
-                    entries = await self.toolbox.fetch_news_api(keywords)
                 elif source.type == "job_board":
                     company = source.config.get("company", "") if source.config else ""
                     entries = await self.toolbox.fetch_jobs(company)
+                else:
+                    logger.warning(f"Unsupported trigger source type: {source.type}")
+                    continue
 
                 for entry in entries:
                     event_hash = f"{source.type}_{entry.get('link', entry.get('title'))}"

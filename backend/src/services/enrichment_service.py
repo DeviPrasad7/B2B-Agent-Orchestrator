@@ -50,13 +50,6 @@ class EnrichmentService:
             {"title": "Acme Corp raises $50M", "summary": "Acme Corp announced series B...", "link": "http://news/1"}
         ]
 
-    async def fetch_news_api(self, keywords: str) -> list[dict]:
-        """Mock method for NewsAPI."""
-        logger.info("Fetching News API", keywords=keywords)
-        return [
-            {"title": "Tech startup GlobalScale launches new product", "summary": "GlobalScale is hiring...", "link": "http://news/2"}
-        ]
-
     async def fetch_jobs(self, company: str) -> list[dict]:
         """Mock method for Job board scraping."""
         logger.info("Fetching Jobs", company=company)
