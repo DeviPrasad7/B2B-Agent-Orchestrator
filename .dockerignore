@@ -1,0 +1,38 @@
+# Version control & Git
+.git/
+.gitignore
+
+# Environment & Secret files
+.env
+.env.*
+!.env.example
+*.env
+*.pem
+*.key
+secrets/
+
+# Python cache & virtual environments
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+.pytest_cache/
+.coverage
+
+# Node modules & build outputs
+node_modules/
+dist/
+build/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Documentation & Logs
+*.md
+!.env.example
+logs/
+*.log

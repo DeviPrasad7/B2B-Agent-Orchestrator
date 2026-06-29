@@ -2,38 +2,51 @@
 .git
 .gitignore
 
-# Python
+# Python cache & virtual environments
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 *.egg-info/
 venv/
 .venv/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# SQLite databases (no longer used)
+# Databases & logs
 *.db
+*.sqlite
+*.log
+logs/
 
 # Environment files (secrets injected at runtime)
 .env
 .env.*
 !.env.example
+*.env
+*.pem
+*.key
 
-# IDE / Editor
+# IDE / Editor & OS
 .vscode/
 .idea/
 *.swp
 *.swo
+.DS_Store
+Thumbs.db
 
-# Documentation and planning (not needed in container)
+# Documentation and planning
 Plan/
 docs/
 *.md
 !README.md
 
-# Tests (not needed in production container)
+# Tests
 tests/
 
-# Frontend (separate deployment)
+# Frontend & Docker files
 frontend/
 docker-compose.yml
 Dockerfile
