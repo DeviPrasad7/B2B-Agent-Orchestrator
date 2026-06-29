@@ -9,8 +9,8 @@ from core.settings import settings
 db_url = settings.get_async_db_url()
 engine_kwargs = {"echo": False}
 if not db_url.startswith("sqlite"):
-    engine_kwargs["pool_size"] = 5
-    engine_kwargs["max_overflow"] = 10
+    from sqlalchemy.pool import NullPool
+    engine_kwargs["poolclass"] = NullPool
 
 engine = create_async_engine(db_url, **engine_kwargs)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
