@@ -136,13 +136,13 @@ export default function Configuration() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             <Input 
               type="number"
-              label="Minimum Viable Confidence\u00A0(%)"
+              label={"Minimum Viable Confidence\u00A0(%)"}
               value={thresholds.min_confidence_score || 50}
               onChange={(e) => setThresholds({...thresholds, min_confidence_score: parseFloat(e.target.value)})}
             />
             <Input 
               type="number"
-              label="Human Review Threshold\u00A0(%)"
+              label={"Human Review Threshold\u00A0(%)"}
               value={thresholds.hitl_confidence_threshold || 70}
               onChange={(e) => setThresholds({...thresholds, hitl_confidence_threshold: parseFloat(e.target.value)})}
             />
