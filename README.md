@@ -7,7 +7,7 @@
   <img src="https://img.shields.io/badge/Docker-Compose-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
 </p>
 
-<h1 align="center">Ideal Customer Profile Agent</h1>
+<h1 align="center">B2B-Agent-Orchestrator</h1>
 
 <p align="center">
   <strong>An enterprise-grade, multi-agent AI orchestration platform for autonomous B2B prospect qualification, enrichment, and outreach generation.</strong>
