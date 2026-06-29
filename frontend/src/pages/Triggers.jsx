@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { triggerService } from '../services/api';
 import { Card, Button, PageHeader, Input, Badge } from '../components/UI';
-import { Play, Square, Plus, RadioTower, Rss, Globe2, Network } from 'lucide-react';
+import { Play, Square, Plus, RadioTower, Rss, Globe2, Network, X } from 'lucide-react';
 
 export default function Triggers() {
   const [sources, setSources] = useState([]);
@@ -124,7 +124,11 @@ export default function Triggers() {
                 Start Lead Discovery
               </Button>
             )}
-            <Button icon={<Plus size={16} />} variant="primary" onClick={() => setShowAddForm(!showAddForm)}>
+            <Button 
+              icon={showAddForm ? <X size={16} /> : <Plus size={16} />} 
+              variant={showAddForm ? "danger" : "primary"} 
+              onClick={() => setShowAddForm(!showAddForm)}
+            >
               {showAddForm ? 'Cancel' : 'Add Lead Source'}
             </Button>
           </div>

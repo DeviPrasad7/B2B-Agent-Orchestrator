@@ -226,7 +226,7 @@ export default function Dashboard() {
         onClose={closeAddForm} 
         title={activeStreamId ? "Live Execution Feed" : "Submit New Target"}
         icon={activeStreamId ? <TerminalIcon size={20} /> : <Globe size={20} />}
-        style={activeStreamId ? { maxWidth: '1000px', width: '90vw' } : {}}
+        style={activeStreamId ? { maxWidth: '1200px', width: '95vw' } : {}}
         footer={
           !activeStreamId ? (
             <>
@@ -285,136 +285,20 @@ export default function Dashboard() {
             <button type="submit" style={{ display: 'none' }}></button>
           </form>
         ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '80vh', minHeight: '600px' }}>
-              <div style={{ display: 'flex', gap: '24px', flex: 1 }}>
-                
-                {/* Left Panel: DAG Live Graph */}
-                <div style={{ flex: '1', minWidth: '350px' }}>
-                  <div style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Execution DAG</div>
+            <div style={{ display: 'flex', gap: '24px', height: '75vh', minHeight: '550px' }}>
+              
+              {/* Column 1: Execution DAG */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+                <div style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Execution DAG</div>
+                <div style={{ flex: 1, background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   <LiveGraph state={currentState} />
                 </div>
-
-                {/* Right Panel: Discovered Data & Logs */}
-                <div style={{ flex: '1.2', minWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
-                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Discovered Data</div>
-                  <div className="flex-col" style={{ gap: '12px', paddingRight: '8px' }}>
-                  
-                  {/* Actionable Summary Block */}
-                  <div style={{ padding: '12px', background: '#fdfaf6', borderRadius: 'var(--radius-sm)', border: '1px solid var(--primary-accent)', minHeight: '120px', wordBreak: 'break-word', overflow: 'hidden' }}>
-                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--primary-accent)', marginBottom: '8px', fontWeight: 600 }}>Actionable Summary</div>
-                    {!currentState?.data?.summary_object ? (
-                      <div className="flex-col" style={{ gap: '8px' }}>
-                        <div style={{ height: '12px', background: '#e6e2d8', borderRadius: '4px', width: '100%', animation: 'pulse 1.5s infinite' }} />
-                        <div style={{ height: '12px', background: '#e6e2d8', borderRadius: '4px', width: '80%', animation: 'pulse 1.5s infinite' }} />
-                        <div style={{ height: '12px', background: '#e6e2d8', borderRadius: '4px', width: '90%', animation: 'pulse 1.5s infinite' }} />
-                      </div>
-                    ) : (() => {
-                      let summary = currentState.data.summary_object;
-                      if (typeof summary === 'string') {
-                        try { summary = JSON.parse(summary); } catch (e) { summary = { overview: summary }; }
-                      }
-                      if (!summary || typeof summary !== 'object') summary = {};
-                      return (
-                        <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {summary.overview && <div><ReactMarkdown className="markdown-body">{"**Overview:** " + (typeof summary.overview === 'object' ? JSON.stringify(summary.overview) : summary.overview)}</ReactMarkdown></div>}
-                          {summary.strengths && <div style={{ color: 'var(--success)' }}><ReactMarkdown className="markdown-body">{"**Strengths:** " + (typeof summary.strengths === 'object' ? JSON.stringify(summary.strengths) : summary.strengths)}</ReactMarkdown></div>}
-                          {summary.risks && <div style={{ color: 'var(--danger)' }}><ReactMarkdown className="markdown-body">{"**Risks:** " + (typeof summary.risks === 'object' ? JSON.stringify(summary.risks) : summary.risks)}</ReactMarkdown></div>}
-                          {summary.recommendation && <div style={{ color: 'var(--primary-accent)' }}><ReactMarkdown className="markdown-body">{"**Recommendation:** " + (typeof summary.recommendation === 'object' ? JSON.stringify(summary.recommendation) : summary.recommendation)}</ReactMarkdown></div>}
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Competitor Intelligence Block */}
-                  <div style={{ flex: 1, padding: '12px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', wordBreak: 'break-word', overflow: 'hidden', minHeight: '120px' }}>
-                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--primary-accent)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Globe size={12} /> Competitor Intelligence
-                    </div>
-                    {!currentState?.data?.competitors_context ? (
-                      <div className="flex-col" style={{ gap: '8px' }}>
-                        <div style={{ height: '12px', background: '#e6e2d8', borderRadius: '4px', width: '100%', animation: 'pulse 1.5s infinite' }} />
-                        <div style={{ height: '12px', background: '#e6e2d8', borderRadius: '4px', width: '90%', animation: 'pulse 1.5s infinite' }} />
-                        <div style={{ height: '12px', background: '#e6e2d8', borderRadius: '4px', width: '95%', animation: 'pulse 1.5s infinite' }} />
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: '13px', lineHeight: 1.5, color: 'var(--text-secondary)' }}>
-                        <ReactMarkdown className="markdown-body">{currentState.data.competitors_context}</ReactMarkdown>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ padding: '12px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Tech Stack</div>
-                    {!currentState?.data?.tech_stack || !Array.isArray(currentState.data.tech_stack) ? (
-                      <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '80%', animation: 'pulse 1.5s infinite' }} />
-                    ) : (
-                      <div style={{ fontSize: '13px', wordWrap: 'break-word', whiteSpace: 'pre-wrap' }}>{currentState.data.tech_stack.map(t => typeof t === 'object' ? JSON.stringify(t) : t).join(', ')}</div>
-                    )}
-                  </div>
-                  
-                  <div style={{ padding: '12px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Employee Count</div>
-                    {!currentState?.data?.employee_count ? (
-                      <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '50%', animation: 'pulse 1.5s infinite' }} />
-                    ) : (
-                      <div style={{ fontSize: '13px' }}>{typeof currentState.data.employee_count === 'object' ? JSON.stringify(currentState.data.employee_count) : currentState.data.employee_count}</div>
-                    )}
-                  </div>
-
-                  {/* Decision Makers Block */}
-                  <div style={{ padding: '12px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
-                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Decision Makers</div>
-                    {!currentState?.data?.contacts || !Array.isArray(currentState.data.contacts) || currentState.data.contacts.length === 0 ? (
-                      <div className="flex-col" style={{ gap: '8px' }}>
-                        <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '70%', animation: 'pulse 1.5s infinite' }} />
-                        <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '60%', animation: 'pulse 1.5s infinite' }} />
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        {currentState.data.contacts.map((c, idx) => (
-                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e6e2d8', paddingBottom: '4px', gap: '12px', flexWrap: 'wrap' }}>
-                            <span style={{ wordWrap: 'break-word' }}><strong>{typeof c.name === 'object' ? JSON.stringify(c.name) : c.name}</strong> ({typeof c.title === 'object' ? JSON.stringify(c.title) : c.title})</span>
-                            {c.email && <span style={{ color: 'var(--primary-accent)', wordBreak: 'break-all' }}>{typeof c.email === 'object' ? JSON.stringify(c.email) : c.email}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* CRM Export Action */}
-                  {currentState?.overall_status === 'APPROVED' && (
-                     <div style={{ marginTop: '16px' }}>
-                       <Button 
-                          variant="primary" 
-                          icon={<Database size={16} />} 
-                          style={{ width: '100%', justifyContent: 'center' }}
-                          onClick={() => alert("Mock: Successfully exported enriched prospect to Salesforce/HubSpot!")}
-                       >
-                         Export to CRM
-                       </Button>
-                     </div>
-                  )}
-
-                  {/* HITL Action */}
-                  {currentState?.overall_status === 'HITL' && (
-                     <div style={{ marginTop: '16px' }}>
-                       <Button 
-                          variant="warning" 
-                          icon={<UserCheck size={16} />} 
-                          style={{ width: '100%', justifyContent: 'center' }}
-                          onClick={() => navigate('/hitl')}
-                       >
-                         Go to Human Review
-                       </Button>
-                     </div>
-                  )}
-
-                </div>
               </div>
-              
-              <div style={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
+
+              {/* Column 2: Workflow Thought Stream */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
                 <div style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Workflow Thought Stream</div>
-                <div style={{ flex: 1, background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '16px', maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ flex: 1, background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '16px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {streamLogs.filter(log => log.type === 'thought' || log.type === 'action' || log.agent === 'SYSTEM').map((log, i) => {
                     const isSystem = log.agent === 'SYSTEM';
                     return (
@@ -440,8 +324,128 @@ export default function Dashboard() {
                   <div ref={logsEndRef} />
                 </div>
               </div>
+
+              {/* Column 3: Discovered Data & Logs */}
+              <div style={{ flex: 1.2, display: 'flex', flexDirection: 'column', minWidth: 0, overflowY: 'auto', paddingRight: '12px' }}>
+                <div style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Discovered Data</div>
+                <div className="flex-col" style={{ gap: '16px' }}>
+                  
+                  {/* Actionable Summary Block */}
+                  <div style={{ padding: '16px', background: '#fdfaf6', borderRadius: 'var(--radius-sm)', border: '1px solid var(--primary-accent)', minHeight: '120px', wordBreak: 'break-word', overflow: 'hidden' }}>
+                    <div style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary-accent)', marginBottom: '12px', fontWeight: 600 }}>Actionable Summary</div>
+                    {!currentState?.data?.summary_object ? (
+                      <div className="flex-col" style={{ gap: '12px' }}>
+                        <div style={{ height: '14px', background: '#e6e2d8', borderRadius: '4px', width: '100%', animation: 'pulse 1.5s infinite' }} />
+                        <div style={{ height: '14px', background: '#e6e2d8', borderRadius: '4px', width: '80%', animation: 'pulse 1.5s infinite' }} />
+                        <div style={{ height: '14px', background: '#e6e2d8', borderRadius: '4px', width: '90%', animation: 'pulse 1.5s infinite' }} />
+                      </div>
+                    ) : (() => {
+                      let summary = currentState.data.summary_object;
+                      if (typeof summary === 'string') {
+                        try { summary = JSON.parse(summary); } catch (e) { summary = { overview: summary }; }
+                      }
+                      if (!summary || typeof summary !== 'object') summary = {};
+                      return (
+                        <div style={{ fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {summary.overview && <div><ReactMarkdown className="markdown-body">{"**Overview:** " + (typeof summary.overview === 'object' ? JSON.stringify(summary.overview) : summary.overview)}</ReactMarkdown></div>}
+                          {summary.strengths && <div style={{ color: 'var(--success)' }}><ReactMarkdown className="markdown-body">{"**Strengths:** " + (typeof summary.strengths === 'object' ? JSON.stringify(summary.strengths) : summary.strengths)}</ReactMarkdown></div>}
+                          {summary.risks && <div style={{ color: 'var(--danger)' }}><ReactMarkdown className="markdown-body">{"**Risks:** " + (typeof summary.risks === 'object' ? JSON.stringify(summary.risks) : summary.risks)}</ReactMarkdown></div>}
+                          {summary.recommendation && <div style={{ color: 'var(--primary-accent)' }}><ReactMarkdown className="markdown-body">{"**Recommendation:** " + (typeof summary.recommendation === 'object' ? JSON.stringify(summary.recommendation) : summary.recommendation)}</ReactMarkdown></div>}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Competitor Intelligence Block */}
+                  <div style={{ padding: '16px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', wordBreak: 'break-word', overflow: 'hidden', minHeight: '120px' }}>
+                    <div style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--primary-accent)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+                      <Globe size={14} /> Competitor Intelligence
+                    </div>
+                    {!currentState?.data?.competitors_context ? (
+                      <div className="flex-col" style={{ gap: '12px' }}>
+                        <div style={{ height: '14px', background: '#e6e2d8', borderRadius: '4px', width: '100%', animation: 'pulse 1.5s infinite' }} />
+                        <div style={{ height: '14px', background: '#e6e2d8', borderRadius: '4px', width: '90%', animation: 'pulse 1.5s infinite' }} />
+                        <div style={{ height: '14px', background: '#e6e2d8', borderRadius: '4px', width: '95%', animation: 'pulse 1.5s infinite' }} />
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '14px', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+                        <ReactMarkdown className="markdown-body">{currentState.data.competitors_context}</ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Tech Stack & Employee Count Row */}
+                  <div style={{ display: 'flex', gap: '16px' }}>
+                    <div style={{ flex: 1, padding: '16px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                      <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '12px', fontWeight: 600 }}>Tech Stack</div>
+                      {!currentState?.data?.tech_stack || !Array.isArray(currentState.data.tech_stack) ? (
+                        <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '80%', animation: 'pulse 1.5s infinite' }} />
+                      ) : (
+                        <div style={{ fontSize: '14px', wordWrap: 'break-word', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{currentState.data.tech_stack.map(t => typeof t === 'object' ? JSON.stringify(t) : t).join(', ')}</div>
+                      )}
+                    </div>
+                    
+                    <div style={{ flex: 1, padding: '16px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                      <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '12px', fontWeight: 600 }}>Employee Count</div>
+                      {!currentState?.data?.employee_count ? (
+                        <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '50%', animation: 'pulse 1.5s infinite' }} />
+                      ) : (
+                        <div style={{ fontSize: '14px', lineHeight: 1.5 }}>{typeof currentState.data.employee_count === 'object' ? JSON.stringify(currentState.data.employee_count) : currentState.data.employee_count}</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Decision Makers Block */}
+                  <div style={{ padding: '16px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
+                    <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '12px', fontWeight: 600 }}>Decision Makers</div>
+                    {!currentState?.data?.contacts || !Array.isArray(currentState.data.contacts) || currentState.data.contacts.length === 0 ? (
+                      <div className="flex-col" style={{ gap: '12px' }}>
+                        <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '70%', animation: 'pulse 1.5s infinite' }} />
+                        <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '60%', animation: 'pulse 1.5s infinite' }} />
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {currentState.data.contacts.map((c, idx) => (
+                          <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: idx !== currentState.data.contacts.length -1 ? '1px solid #e6e2d8' : 'none', paddingBottom: idx !== currentState.data.contacts.length -1 ? '8px' : '0', gap: '12px', flexWrap: 'wrap' }}>
+                            <span style={{ wordWrap: 'break-word', lineHeight: 1.5 }}><strong>{typeof c.name === 'object' ? JSON.stringify(c.name) : c.name}</strong> ({typeof c.title === 'object' ? JSON.stringify(c.title) : c.title})</span>
+                            {c.email && <span style={{ color: 'var(--primary-accent)', wordBreak: 'break-all', lineHeight: 1.5 }}>{typeof c.email === 'object' ? JSON.stringify(c.email) : c.email}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* CRM Export Action */}
+                  {currentState?.overall_status === 'APPROVED' && (
+                     <div style={{ marginTop: '16px' }}>
+                       <Button 
+                          variant="primary" 
+                          icon={<Database size={16} />} 
+                          style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
+                          onClick={() => alert("Mock: Successfully exported enriched prospect to Salesforce/HubSpot!")}
+                       >
+                         Export to CRM
+                       </Button>
+                     </div>
+                  )}
+
+                  {/* HITL Action */}
+                  {currentState?.overall_status === 'HITL' && (
+                     <div style={{ marginTop: '16px' }}>
+                       <Button 
+                          variant="warning" 
+                          icon={<UserCheck size={16} />} 
+                          style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
+                          onClick={() => navigate('/hitl')}
+                       >
+                         Go to Human Review
+                       </Button>
+                     </div>
+                  )}
+
+                </div>
+              </div>
             </div>
-          </div>
         )}
       </Modal>
 

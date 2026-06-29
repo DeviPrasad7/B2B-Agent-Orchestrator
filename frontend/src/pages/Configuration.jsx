@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { configService } from '../services/api';
 import { Card, Button, PageHeader, Input } from '../components/UI';
 import { Save, RefreshCw, Layers, Users, Sliders, ShieldAlert } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function Configuration() {
   const [icp, setIcp] = useState({ industries: [], tech_stack: [] });
@@ -39,6 +40,7 @@ export default function Configuration() {
         configService.updatePersona(persona),
         configService.updateThresholds(thresholds)
       ]);
+      toast.success('Configuration deployed successfully!');
     } catch (error) {
       console.error('Failed to save config:', error);
       alert('Failed to save configuration.');

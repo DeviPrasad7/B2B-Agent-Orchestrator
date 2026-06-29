@@ -5,6 +5,10 @@ import os
 # Add src to python path so imports work without installing as a package
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), '../.env'))
+
+
 from core.settings import settings
 from models.database import engine, Base, init_db
 import uvicorn

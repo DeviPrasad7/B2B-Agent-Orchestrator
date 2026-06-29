@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { ReactFlow, Background, Controls } from '@xyflow/react';
+import { ReactFlow, Background, Controls, Handle, Position } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Play, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 
@@ -35,6 +35,7 @@ const CustomGraphNode = ({ data }) => {
       alignItems: 'center',
       gap: '12px'
     }}>
+      <Handle type="target" position={Position.Top} style={{ visibility: 'hidden' }} />
       <div style={{ 
         width: '24px', 
         height: '24px', 
@@ -55,6 +56,7 @@ const CustomGraphNode = ({ data }) => {
         <div style={{ fontWeight: 600, fontSize: '13px' }}>{typeof data.label === 'object' ? JSON.stringify(data.label) : String(data.label)}</div>
         <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase' }}>{data.status}</div>
       </div>
+      <Handle type="source" position={Position.Bottom} style={{ visibility: 'hidden' }} />
     </div>
   );
 };
@@ -155,7 +157,7 @@ export default function LiveGraph({ state }) {
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', minHeight: '400px', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '100%', minHeight: '250px', border: '1px solid #e5e7eb', borderRadius: '8px', overflow: 'hidden' }}>
       <style>
         {`
           .spin-animation {

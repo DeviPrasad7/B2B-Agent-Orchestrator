@@ -425,6 +425,7 @@ textarea.input-field {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
   animation: fadeIn 0.2s ease-out;
 }
 
@@ -434,6 +435,9 @@ textarea.input-field {
   box-shadow: var(--shadow-lg);
   width: 100%;
   max-width: 500px;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   animation: slideUp 0.2s ease-out;
 }
@@ -472,6 +476,8 @@ textarea.input-field {
 
 .modal-body {
   padding: 24px;
+  overflow-y: auto;
+  flex: 1;
 }
 
 .modal-footer {

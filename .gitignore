@@ -58,3 +58,5 @@ build/
 *.njsproj
 *.sln
 *.sw?
+*.db-shm
+*.db-wal
