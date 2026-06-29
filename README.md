@@ -390,16 +390,16 @@ Request --> Groq Pool [model_1, model_2, ..., model_n]
 
 ### Backend Documentation Suite
 
-| Document | Lines | Focus Area |
-|:---|:---:|:---|
-| [Backend README](backend/README.md) | 500+ | Architecture overview, module guide, API reference, dependency injection |
-| [Class Diagram](backend/CLASS_DIAGRAM.md) | 600+ | UML class diagrams, inheritance hierarchies, protocol interfaces, composition |
-| [Sequence Flow](backend/SEQUENCE_FLOW.md) | 600+ | End-to-end sequence diagrams for all major workflows |
-| [SOLID Principles](backend/SOLID_PRINCIPLES.md) | 600+ | Concrete SOLID implementation analysis with code references |
-| [Agentic Reliability](backend/RELIABILITY.md) | 600+ | Circuit breakers, retry logic, outbox pattern, graceful degradation |
-| [Agentic Flow](backend/AGENTIC_FLOW.md) | 600+ | Dynamic planning, state management, parallel execution, custom DAGs |
-| [Low-Level Design](backend/LLD_ARCHITECTURE.md) | 600+ | Data models, state machines, DTOs, schema validation, database design |
-| [Application Flow](backend/APPLICATION_FLOW.md) | 600+ | Bootstrap, request handling, agent execution, real-time event delivery |
+| Document | Focus Area |
+|:---|:---|
+| [Backend README](backend/README.md) | Architecture overview, module guide, API reference, dependency injection |
+| [Class Diagram](backend/CLASS_DIAGRAM.md) | UML class diagrams, inheritance hierarchies, protocol interfaces, composition |
+| [Sequence Flow](backend/SEQUENCE_FLOW.md) | End-to-end sequence diagrams for all major workflows |
+| [SOLID Principles](backend/SOLID_PRINCIPLES.md) | Concrete SOLID implementation analysis with code references |
+| [Agentic Reliability](backend/RELIABILITY.md) | Circuit breakers, retry logic, outbox pattern, graceful degradation |
+| [Agentic Flow](backend/AGENTIC_FLOW.md) | Dynamic planning, state management, parallel execution, custom DAGs |
+| [Low-Level Design](backend/LLD_ARCHITECTURE.md) | Data models, state machines, DTOs, schema validation, database design |
+| [Application Flow](backend/APPLICATION_FLOW.md) | Bootstrap, request handling, agent execution, real-time event delivery |
 
 ### Frontend Documentation
 
