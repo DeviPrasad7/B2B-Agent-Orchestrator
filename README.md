@@ -173,6 +173,24 @@ The platform ships with **16 specialized agents**, each registered via the decor
 
 ---
 
+### Platform Screenshots
+
+![Prospects Pipeline Dashboard](docs/assets/2.jpeg)
+
+![Orchestrator Execution Trace](docs/assets/4.jpeg)
+
+![Agent Directory](docs/assets/1.jpeg)
+
+![Prospects Pipeline Dashboard](docs/assets/2.jpeg)
+
+![Workflow Studio Canvas](docs/assets/3.jpeg)
+
+![Orchestrator Execution Trace](docs/assets/4.jpeg)
+
+![Actionable Summary](docs/assets/5.jpeg)
+
+---
+
 ## System Architecture
 
 The platform follows a **clean layered architecture** with strict dependency inversion between layers:
