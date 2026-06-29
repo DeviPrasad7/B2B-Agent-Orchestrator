@@ -4,7 +4,6 @@ from ..utils import Toolbox
 from services.memory_service import MemoryService
 from ..base import AgentNode
 from ..registry import register_agent
-from services.llm_service import LLMService
 
 @register_agent("competitor_intel_node", description="Finds competitor info and generates a SWOT analysis.")
 class CompetitorIntelNode(AgentNode):
@@ -12,7 +11,6 @@ class CompetitorIntelNode(AgentNode):
         self.toolbox = toolbox
         self.memory = memory
         self.config = config
-        self.llm = LLMService()
 
     async def __call__(self, state: GraphState) -> dict[str, Any]:
         prospect_id = state.get("prospect_id", "unknown")
@@ -38,7 +36,7 @@ class CompetitorIntelNode(AgentNode):
             Keep it concise and focus on their market position and technological choices.
             """
             
-            swot_analysis = await self.llm.generate_text(prompt, fallback="SWOT Analysis unavailable.", strategy="fast")
+            swot_analysis = await self.toolbox.generate_text(prompt, fallback="SWOT Analysis unavailable.", strategy="fast")
 
             return {
                 "executed_agents": ["competitor_intel_node"],

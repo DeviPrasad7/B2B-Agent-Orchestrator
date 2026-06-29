@@ -23,6 +23,7 @@ export const prospectsService = {
   getProspects: async (params) => (await api.get('/api/prospects', { params })).data,
   createProspect: async (data) => (await api.post('/api/prospects', data)).data,
   getProspectDetail: async (id) => (await api.get(`/api/prospects/${id}`)).data,
+  deleteProspect: async (id) => (await api.delete(`/api/prospects/${id}`)).data,
   getProspectStreamUrl: (id) => `${API_URL}/api/prospects/${id}/stream`,
 };
 
@@ -56,6 +57,3 @@ export const triggerService = {
   stop: async () => (await api.post('/api/triggers/stop')).data,
 };
 
-export const eventsService = {
-  getEvents: async () => (await api.get('/api/events')).data.events,
-};

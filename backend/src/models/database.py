@@ -33,7 +33,7 @@ class Prospect(Base):
     created_at = Column(DateTime(timezone=True), default=get_utc_now)
     updated_at = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
     workflow_thread_id = Column(String, nullable=True)
-    custom_workflow_id = Column(Uuid, ForeignKey("workflows.id"), nullable=True)
+    custom_workflow_id = Column(Uuid, ForeignKey("workflows.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     hitl_requests = relationship("HITLRequest", back_populates="prospect", lazy="noload")
@@ -43,7 +43,7 @@ class HITLRequest(Base):
 
     id = Column(Uuid, primary_key=True, default=uuid.uuid4)
     display_id = Column(String, nullable=True, index=True)
-    prospect_id = Column(Uuid, ForeignKey("prospects.id"), nullable=False)
+    prospect_id = Column(Uuid, ForeignKey("prospects.id", ondelete="CASCADE"), nullable=False)
     summary = Column(String, nullable=False)
     decision = Column(String, nullable=True, index=True)
     corrections = Column(JSON, nullable=True)

@@ -101,14 +101,14 @@ class Toolbox:
     async def detect_tech_stack(self, html_content: str, domain: str) -> list[TechStackEntry]:
         return await self._scraping_service.detect_tech_stack(html_content, domain)
 
-    def scrape_careers_page(self, url: str) -> list[JobPosting]:
-        return self._scraping_service.scrape_careers_page(url)
+    async def scrape_careers_page(self, url: str) -> list[JobPosting]:
+        return await self._scraping_service.scrape_careers_page(url)
 
     def validate_email(self, email: str) -> EmailValidationResult:
         return self._enrichment_service.validate_email(email)
 
-    def get_competitor_info(self, tech_tag: str) -> Optional[CompetitorMapping]:
-        return self._enrichment_service.get_competitor_info(tech_tag)
+    async def get_competitor_info(self, tech_tag: str) -> Optional[CompetitorMapping]:
+        return await self._enrichment_service.get_competitor_info(tech_tag)
 
     def emit_event(self, event_type: str, payload: Any) -> None:
         logger.info("Emitting event", event_type=event_type, payload=payload)

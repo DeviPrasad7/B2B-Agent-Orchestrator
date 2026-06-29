@@ -51,9 +51,9 @@ export default function ProspectDetailPanel({ prospectId, onClose }) {
 
   const state = prospect.state_json || {};
   const data = state.data || {};
-  const executionTrace = state.execution_trace || [];
-  const executedAgents = state.executed_agents || [];
-  const outreachDrafts = data.outreach_drafts || [];
+  const executionTrace = Array.isArray(state.execution_trace) ? state.execution_trace : [];
+  const executedAgents = Array.isArray(state.executed_agents) ? state.executed_agents : [];
+  const outreachDrafts = Array.isArray(data.outreach_drafts) ? data.outreach_drafts : [];
 
   return (
     <div style={panelStyles.container}>
@@ -99,16 +99,16 @@ export default function ProspectDetailPanel({ prospectId, onClose }) {
           <>
             <div style={{ padding: '16px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Final Status</div>
-                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: '4px' }}>{prospect.status}</div>
+                <div style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Final Status</div>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginTop: '4px', fontSize: '15px' }}>{prospect.status}</div>
               </div>
               <div>
-                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Trigger Source</div>
-                <div style={{ fontSize: '14px', marginTop: '4px' }}>{state.current_trigger_event || 'Unknown'}</div>
+                <div style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Trigger Source</div>
+                <div style={{ fontSize: '15px', marginTop: '4px' }}>{typeof state.current_trigger_event === 'object' ? JSON.stringify(state.current_trigger_event) : (state.current_trigger_event || 'Unknown')}</div>
               </div>
               <div>
-                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Confidence</div>
-                <div style={{ fontSize: '14px', marginTop: '4px', color: state.confidence_score > 0.7 ? 'var(--success)' : 'var(--warning)' }}>
+                <div style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600 }}>Confidence</div>
+                <div style={{ fontSize: '15px', marginTop: '4px', color: state.confidence_score > 0.7 ? 'var(--success)' : 'var(--warning)' }}>
                   {Math.round((state.confidence_score || 0) * 100)}%
                 </div>
               </div>
@@ -141,25 +141,25 @@ export default function ProspectDetailPanel({ prospectId, onClose }) {
                           {parsedSummary.overview && (
                             <div style={panelStyles.summaryBox}>
                               <div style={panelStyles.summaryLabel}>Overview</div>
-                              <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.5 }}>{parsedSummary.overview}</div>
+                              <div style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: 1.6, wordBreak: 'break-word' }}>{typeof parsedSummary.overview === 'object' ? JSON.stringify(parsedSummary.overview) : parsedSummary.overview}</div>
                             </div>
                           )}
                           {parsedSummary.strengths && (
                             <div style={{ ...panelStyles.summaryBox, borderLeft: '3px solid var(--success)' }}>
                               <div style={{ ...panelStyles.summaryLabel, color: 'var(--success)' }}>Strengths</div>
-                              <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.5 }}>{parsedSummary.strengths}</div>
+                              <div style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: 1.6, wordBreak: 'break-word' }}>{typeof parsedSummary.strengths === 'object' ? JSON.stringify(parsedSummary.strengths) : parsedSummary.strengths}</div>
                             </div>
                           )}
                           {parsedSummary.risks && (
                             <div style={{ ...panelStyles.summaryBox, borderLeft: '3px solid var(--danger)' }}>
                               <div style={{ ...panelStyles.summaryLabel, color: 'var(--danger)' }}>Risks / Weaknesses</div>
-                              <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.5 }}>{parsedSummary.risks}</div>
+                              <div style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: 1.6, wordBreak: 'break-word' }}>{typeof parsedSummary.risks === 'object' ? JSON.stringify(parsedSummary.risks) : parsedSummary.risks}</div>
                             </div>
                           )}
                           {parsedSummary.recommendation && (
                             <div style={{ ...panelStyles.summaryBox, borderLeft: '3px solid var(--primary-accent)' }}>
                               <div style={{ ...panelStyles.summaryLabel, color: 'var(--primary-accent)' }}>Recommendation</div>
-                              <div style={{ fontSize: '13px', color: 'var(--text-primary)', lineHeight: 1.5 }}>{parsedSummary.recommendation}</div>
+                              <div style={{ fontSize: '15px', color: 'var(--text-primary)', lineHeight: 1.6, wordBreak: 'break-word' }}>{typeof parsedSummary.recommendation === 'object' ? JSON.stringify(parsedSummary.recommendation) : parsedSummary.recommendation}</div>
                             </div>
                           )}
                         </div>
@@ -182,11 +182,11 @@ export default function ProspectDetailPanel({ prospectId, onClose }) {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div style={{ background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', padding: '16px' }}>
                     <div style={panelStyles.summaryLabel}>Tech Stack</div>
-                    {data.tech_stack && data.tech_stack.length > 0 ? (
+                    {Array.isArray(data.tech_stack) && data.tech_stack.length > 0 ? (
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '8px' }}>
                         {data.tech_stack.map((tech, i) => (
                           <Badge key={i} variant="neutral" style={{ background: 'var(--bg-surface)' }}>
-                            {typeof tech === 'string' ? tech : tech.technology || tech}
+                            {tech == null ? 'Unknown' : (typeof tech === 'string' ? tech : (tech.technology || JSON.stringify(tech)))}
                           </Badge>
                         ))}
                       </div>
@@ -195,14 +195,14 @@ export default function ProspectDetailPanel({ prospectId, onClose }) {
                     )}
                   </div>
                   
-                  <div style={{ background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', padding: '16px' }}>
+                  <div style={{ background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)', padding: '16px', overflow: 'hidden' }}>
                     <div style={panelStyles.summaryLabel}>Firmographics</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', fontSize: '13px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px', fontSize: '15px', wordBreak: 'break-word' }}>
                       {data.firmographics ? (
                         <>
-                          {data.firmographics.employee_count && <div><strong>Employees:</strong> {data.firmographics.employee_count}</div>}
-                          {data.firmographics.estimated_revenue && <div><strong>Revenue:</strong> {data.firmographics.estimated_revenue}</div>}
-                          {data.firmographics.industry && <div><strong>Industry:</strong> {data.firmographics.industry}</div>}
+                          {data.firmographics.employee_count && <div><strong>Employees:</strong> {typeof data.firmographics.employee_count === 'object' ? JSON.stringify(data.firmographics.employee_count) : data.firmographics.employee_count}</div>}
+                          {data.firmographics.estimated_revenue && <div><strong>Revenue:</strong> {typeof data.firmographics.estimated_revenue === 'object' ? JSON.stringify(data.firmographics.estimated_revenue) : data.firmographics.estimated_revenue}</div>}
+                          {data.firmographics.industry && <div><strong>Industry:</strong> {typeof data.firmographics.industry === 'object' ? JSON.stringify(data.firmographics.industry) : data.firmographics.industry}</div>}
                         </>
                       ) : (
                         <div style={{ color: 'var(--text-tertiary)' }}>No firmographics found</div>
@@ -258,12 +258,12 @@ export default function ProspectDetailPanel({ prospectId, onClose }) {
                     const isLast = idx === executedAgents.length - 1;
                     return (
                       <div key={idx} style={{ display: 'flex', gap: '20px', position: 'relative', zIndex: 1 }}>
-                        <div className={isLast ? "glow-node" : ""} style={{ width: '40px', height: '40px', borderRadius: '50%', background: isLast ? 'var(--primary-accent)' : 'var(--bg-surface)', border: `2px solid var(--primary-accent)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '4px', transition: 'all 0.3s' }}>
-                          <Activity size={18} color={isLast ? '#fff' : 'var(--primary-accent)'} />
+                        <div className={isLast ? "glow-node" : ""} style={{ width: '48px', height: '48px', borderRadius: '50%', background: isLast ? 'var(--primary-accent)' : 'var(--bg-surface)', border: `2px solid var(--primary-accent)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '4px', transition: 'all 0.3s' }}>
+                          <Activity size={20} color={isLast ? '#fff' : 'var(--primary-accent)'} />
                         </div>
-                        <div className="shine-effect" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '20px', flex: 1, position: 'relative', boxShadow: isLast ? 'var(--shadow-sm)' : 'none' }}>
+                        <div className="shine-effect" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '16px', flex: 1, position: 'relative', boxShadow: isLast ? 'var(--shadow-sm)' : 'none', overflow: 'hidden' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '15px' }}>{agent.replace('_node', '').replace(/_/g, ' ').toUpperCase()}</div>
+                            <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '17px', wordBreak: 'break-word' }}>{typeof agent === 'string' ? agent.replace('_node', '').replace(/_/g, ' ').toUpperCase() : String(agent)}</div>
                             <Badge variant={isLast ? "primary" : "success"} style={{ fontSize: '11px' }}>{isLast ? "Active/Completed" : "Completed"}</Badge>
                           </div>
                         </div>
@@ -276,30 +276,31 @@ export default function ProspectDetailPanel({ prospectId, onClose }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative' }}>
                 <div className="trace-line-animated"></div>
                 {executionTrace.map((step, idx) => {
+                  if (!step) return null;
                   const isLast = idx === executionTrace.length - 1;
                   return (
                     <div key={idx} style={{ display: 'flex', gap: '20px', position: 'relative', zIndex: 1 }}>
-                      <div className={isLast ? "glow-node" : ""} style={{ width: '40px', height: '40px', borderRadius: '50%', background: isLast ? 'var(--primary-accent)' : 'var(--bg-surface)', border: `2px solid var(--primary-accent)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '4px', transition: 'all 0.3s' }}>
-                        <Activity size={18} color={isLast ? '#fff' : 'var(--primary-accent)'} />
+                      <div className={isLast ? "glow-node" : ""} style={{ width: '48px', height: '48px', borderRadius: '50%', background: isLast ? 'var(--primary-accent)' : 'var(--bg-surface)', border: `2px solid var(--primary-accent)`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '4px', transition: 'all 0.3s' }}>
+                        <Activity size={20} color={isLast ? '#fff' : 'var(--primary-accent)'} />
                       </div>
-                      <div className="shine-effect" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '20px', flex: 1, position: 'relative', boxShadow: isLast ? 'var(--shadow-sm)' : 'none' }}>
+                      <div className="shine-effect" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '16px', flex: 1, position: 'relative', boxShadow: isLast ? 'var(--shadow-sm)' : 'none', overflow: 'hidden' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '15px' }}>{step.agent.replace('_node', '').replace(/_/g, ' ').toUpperCase()}</div>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '17px', wordBreak: 'break-word' }}>{typeof step.agent === 'string' ? step.agent.replace('_node', '').replace(/_/g, ' ').toUpperCase() : String(step.agent)}</div>
                           <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', display: 'flex', alignItems: 'center', gap: '4px', background: 'var(--bg-surface)', padding: '2px 8px', borderRadius: '100px', border: '1px solid var(--border-light)' }}>
-                            <Clock size={12} /> {(step.duration_seconds || 0).toFixed(2)}s
+                            <Clock size={12} /> {Number(step.duration_seconds || 0).toFixed(2)}s
                           </div>
                         </div>
                         
-                        {step.recent_thoughts && step.recent_thoughts.length > 0 && (
+                        {Array.isArray(step.recent_thoughts) && step.recent_thoughts.length > 0 && (
                           <div style={{ marginBottom: '16px', background: 'rgba(255,255,255,0.5)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
-                            <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: '8px' }}><AlignLeft size={10} style={{ display: 'inline', marginRight: '4px' }}/> Agent Thoughts</div>
-                            <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              {step.recent_thoughts.map((t, i) => <li key={i}>{t}</li>)}
+                            <div style={{ fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: '8px' }}><AlignLeft size={10} style={{ display: 'inline', marginRight: '4px' }}/> Agent Thoughts</div>
+                            <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '14px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '6px', wordBreak: 'break-word' }}>
+                              {step.recent_thoughts.map((t, i) => <li key={i}>{typeof t === 'object' ? JSON.stringify(t) : String(t)}</li>)}
                             </ul>
                           </div>
                         )}
                         
-                        {step.updates && Object.keys(step.updates).length > 0 && (
+                        {typeof step.updates === 'object' && step.updates !== null && Object.keys(step.updates).length > 0 && (
                           <div>
                             <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', fontWeight: 600, marginBottom: '8px' }}>State Updates (Outputs)</div>
                             <pre style={{ margin: 0, padding: '16px', background: '#2d2d2d', borderRadius: 'var(--radius-sm)', fontSize: '12px', overflowX: 'auto', color: '#e6e6e6', fontFamily: '"JetBrains Mono", monospace' }}>
@@ -330,25 +331,27 @@ export default function ProspectDetailPanel({ prospectId, onClose }) {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {outreachDrafts.map((draft, idx) => (
+                {outreachDrafts.map((draft, idx) => {
+                  if (!draft) return null;
+                  return (
                   <div key={idx} style={{ background: 'var(--bg-main)', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
                     <div style={{ padding: '12px 16px', background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between' }}>
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>To: {draft.contact_name}</div>
-                        <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>{draft.contact_title}</div>
+                        <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', wordBreak: 'break-word' }}>To: {typeof draft.contact_name === 'object' ? JSON.stringify(draft.contact_name) : String(draft.contact_name || '')}</div>
+                        <div style={{ fontSize: '14px', color: 'var(--text-tertiary)', wordBreak: 'break-word' }}>{typeof draft.contact_title === 'object' ? JSON.stringify(draft.contact_title) : String(draft.contact_title || '')}</div>
                       </div>
                       <Badge variant="primary">Draft</Badge>
                     </div>
-                    <div style={{ padding: '16px' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px' }}>
-                        Subject: {draft.subject}
+                    <div style={{ padding: '16px', overflow: 'hidden' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '12px', wordBreak: 'break-word' }}>
+                        Subject: {typeof draft.subject === 'object' ? JSON.stringify(draft.subject) : String(draft.subject || '')}
                       </div>
-                      <div style={{ fontSize: '14px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                        {draft.body}
+                      <div style={{ fontSize: '15px', color: 'var(--text-secondary)', lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                        {typeof draft.body === 'object' ? JSON.stringify(draft.body) : String(draft.body || '')}
                       </div>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>
@@ -365,8 +368,8 @@ const panelStyles = {
     top: 0,
     right: 0,
     bottom: 0,
-    width: '900px',
-    maxWidth: '100%',
+    width: '1250px',
+    maxWidth: '95%',
     background: 'var(--bg-panel)',
     borderLeft: '1px solid var(--border-light)',
     boxShadow: '-4px 0 32px rgba(0,0,0,0.15)',
@@ -376,7 +379,7 @@ const panelStyles = {
     animation: 'slideInRight 0.3s ease-out forwards'
   },
   header: {
-    padding: '24px',
+    padding: '24px 24px 16px 24px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
@@ -423,10 +426,10 @@ const panelStyles = {
     overflowY: 'auto'
   },
   sectionTitle: {
-    fontSize: '14px',
+    fontSize: '16px',
     fontWeight: 600,
     color: 'var(--text-secondary)',
-    marginBottom: '12px',
+    marginBottom: '16px',
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
@@ -451,8 +454,10 @@ const panelStyles = {
     borderRadius: 'var(--radius-sm)',
     border: '1px solid var(--border-light)',
     padding: '24px',
-    fontSize: '14px',
-    lineHeight: 1.6,
-    color: 'var(--text-primary)'
+    fontSize: '15px',
+    lineHeight: 1.7,
+    color: 'var(--text-primary)',
+    overflow: 'hidden',
+    wordBreak: 'break-word'
   }
 };

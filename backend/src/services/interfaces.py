@@ -39,11 +39,11 @@ class ScrapingServiceProtocol(Protocol):
         """Fetch a URL and return structured page content."""
         ...
 
-    def detect_tech_stack(self, html_content: str, domain: str) -> list[TechStackEntry]:
+    async def detect_tech_stack(self, html_content: str, domain: str) -> list[TechStackEntry]:
         """Detect technologies from HTML content and domain signals."""
         ...
 
-    def scrape_careers_page(self, url: str) -> list[JobPosting]:
+    async def scrape_careers_page(self, url: str) -> list[JobPosting]:
         """Scrape job postings from a careers page."""
         ...
 
@@ -64,7 +64,7 @@ class EnrichmentServiceProtocol(Protocol):
         """Validate an email address."""
         ...
 
-    def get_competitor_info(self, tech_tag: str) -> Optional[CompetitorMapping]:
+    async def get_competitor_info(self, tech_tag: str) -> Optional[CompetitorMapping]:
         """Retrieve competitor mapping for a given technology tag."""
         ...
 

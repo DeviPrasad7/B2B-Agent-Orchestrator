@@ -1,8 +1,77 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { PageHeader, Button, Card, Badge, Modal, Input } from '../components/UI';
-import { Plus, GitMerge, Trash2, GripVertical, Settings2, Info, ArrowRight, Play, Server, Bot, Search, Briefcase, User, PenTool, LayoutTemplate, Layers } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { PageHeader, Button, Card, Badge, Input } from '../components/UI';
+import { Plus, GitMerge, Trash2, LayoutTemplate, Server, Search, User, Briefcase, PenTool, Bot, Layers, X } from 'lucide-react';
 import { workflowService, agentService } from '../services/api';
 import toast from 'react-hot-toast';
+import { ReactFlow, Controls, Background, addEdge, applyNodeChanges, applyEdgeChanges, Handle, Position, ReactFlowProvider, BaseEdge, EdgeLabelRenderer, getBezierPath, useReactFlow } from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+
+const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, style, markerEnd }) => {
+  const [edgePath, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
+  const { setEdges } = useReactFlow();
+
+  const onEdgeClick = (evt) => {
+    evt.stopPropagation();
+    setEdges((edges) => edges.filter((e) => e.id !== id));
+  };
+
+  return (
+    <>
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
+      <EdgeLabelRenderer>
+        <div
+          style={{
+            position: 'absolute',
+            transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            pointerEvents: 'all',
+          }}
+          className="nodrag nopan"
+        >
+          <button 
+            onClick={onEdgeClick} 
+            style={{ 
+              background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', 
+              width: '18px', height: '18px', cursor: 'pointer', display: 'flex', 
+              alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' 
+            }}
+            title="Remove Connection"
+          >
+            <X size={12} strokeWidth={3} />
+          </button>
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+};
+
+// Custom Node for rendering agents in the graph
+const AgentNode = ({ data }) => {
+  const isEnder = data.agentId === 'ender_node';
+  const borderColor = isEnder ? '#ef4444' : (data.type === 'core' ? '#3b82f6' : '#10b981');
+  
+  return (
+    <div style={{ background: '#ffffff', border: `2px solid ${borderColor}`, borderRadius: '12px', padding: '16px', minWidth: '220px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', color: '#000000' }}>
+      {data.agentId !== 'start' && <Handle type="target" position={Position.Left} style={{ width: '12px', height: '12px', background: borderColor }} />}
+      
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+        <div style={{ fontWeight: 700, fontSize: '15px', color: '#000000' }}>{data.label}</div>
+      </div>
+      
+      <div style={{ fontSize: '12px', color: '#4b5563', lineHeight: 1.4 }}>
+        {data.description}
+      </div>
+      
+      {!isEnder && data.agentId !== 'start' && <Handle type="source" position={Position.Right} style={{ width: '12px', height: '12px', background: borderColor }} />}
+    </div>
+  );
+};
+
+const nodeTypes = {
+  agentNode: AgentNode,
+};
+const edgeTypes = {
+  custom: CustomEdge,
+};
 
 export default function WorkflowStudio() {
   const [workflows, setWorkflows] = useState([]);
@@ -13,10 +82,11 @@ export default function WorkflowStudio() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
-  const [formData, setFormData] = useState({ name: '', description: '', steps: [] });
+  const [formData, setFormData] = useState({ name: '', description: '' });
   
-  // For showing agent details in a popover/modal
-  const [selectedAgentDetails, setSelectedAgentDetails] = useState(null);
+  // React Flow state
+  const [nodes, setNodes] = useState([]);
+  const [edges, setEdges] = useState([]);
 
   const fetchData = async () => {
     try {
@@ -39,11 +109,40 @@ export default function WorkflowStudio() {
   useEffect(() => {
     fetchData();
   }, []);
+  
+  useEffect(() => {
+    if (showAddForm) {
+      // Find ender node from core agents
+      const enderDesc = coreAgents.find(a => a.name === 'ender_node')?.description || "Consolidates and dispatches.";
+      
+      setNodes([
+        { 
+          id: 'start', 
+          type: 'input', 
+          data: { label: 'On Prospect Trigger', description: 'Starts the workflow when a prospect is added.' }, 
+          position: { x: 50, y: 200 },
+          style: { background: '#f59e0b', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '8px', padding: '16px' }
+        },
+        { 
+          id: 'ender_1', 
+          type: 'agentNode', 
+          data: { label: 'ender_node', agentId: 'ender_node', type: 'core', description: enderDesc }, 
+          position: { x: 500, y: 200 } 
+        }
+      ]);
+      setEdges([]);
+      setFormData({ name: '', description: '' });
+    }
+  }, [showAddForm, coreAgents]);
+
+  const onNodesChange = useCallback((changes) => setNodes((nds) => applyNodeChanges(changes, nds)), []);
+  const onEdgesChange = useCallback((changes) => setEdges((eds) => applyEdgeChanges(changes, eds)), []);
+  const onConnect = useCallback((params) => setEdges((eds) => addEdge({ ...params, type: 'custom' }, eds)), []);
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
-    if (formData.steps.length === 0) {
-      toast.error("Please add at least one step to the workflow.");
+    if (nodes.length < 2) {
+      toast.error("Please add at least one agent to the workflow.");
       return;
     }
     
@@ -52,10 +151,9 @@ export default function WorkflowStudio() {
       await workflowService.createWorkflow({
         name: formData.name,
         description: formData.description,
-        steps: formData.steps.map(s => s.name)
+        steps: { nodes, edges } // Save as DAG
       });
       setShowAddForm(false);
-      setFormData({ name: '', description: '', steps: [] });
       toast.success('Workflow created successfully');
       fetchData();
     } catch (error) {
@@ -77,24 +175,23 @@ export default function WorkflowStudio() {
     }
   };
   
-  const addStep = (agent) => {
-    setFormData(prev => ({
-      ...prev,
-      steps: [...prev.steps, agent]
-    }));
+  const addNodeToCanvas = (agent) => {
+    const newNode = {
+      id: `${agent.name}_${Date.now()}`,
+      type: 'agentNode',
+      position: { x: 250, y: 150 + Math.random() * 100 },
+      data: {
+        label: agent.name,
+        agentId: agent.name,
+        type: agent.type,
+        description: agent.description
+      }
+    };
+    setNodes((nds) => [...nds, newNode]);
   };
   
-  const removeStep = (index) => {
-    setFormData(prev => {
-      const newSteps = [...prev.steps];
-      newSteps.splice(index, 1);
-      return { ...prev, steps: newSteps };
-    });
-  };
-  
-  // Icon mapping for agents
   const getAgentIcon = (name) => {
-    const iconProps = { size: 18, color: 'var(--text-primary)' };
+    const iconProps = { size: 16, color: '#000' };
     const n = name.toLowerCase();
     if (n.includes('scraper')) return <LayoutTemplate {...iconProps} />;
     if (n.includes('enricher')) return <Server {...iconProps} />;
@@ -105,11 +202,6 @@ export default function WorkflowStudio() {
     if (n.includes('hitl')) return <User {...iconProps} />;
     return <Bot {...iconProps} />;
   };
-
-  const allAgents = [
-    ...coreAgents.map(a => ({ ...a, type: 'core' })),
-    ...customAgents.map(a => ({ ...a, type: 'custom' }))
-  ];
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', width: '100%', paddingBottom: '100px' }}>
@@ -139,7 +231,7 @@ export default function WorkflowStudio() {
                   <GitMerge size={12} style={{ marginRight: '4px' }} /> Custom Pipeline
                 </Badge>
                 <div style={{ fontSize: '12px', color: 'var(--text-tertiary)' }}>
-                  {workflow.steps.length} steps
+                  {workflow.steps?.nodes ? workflow.steps.nodes.length : (workflow.steps?.length || 0)} nodes
                 </div>
               </div>
 
@@ -151,17 +243,6 @@ export default function WorkflowStudio() {
                 {workflow.description}
               </p>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '24px' }}>
-                {workflow.steps.map((step, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: 'var(--bg-main)', border: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>
-                      {i + 1}
-                    </div>
-                    {step}
-                  </div>
-                ))}
-              </div>
-
               <div className="flex-row justify-between" style={{ gap: '12px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
                 <button onClick={() => handleDelete(workflow.id)} style={{ padding: '8px', background: 'transparent', border: '1px solid var(--border-light)', borderRadius: 'var(--radius-sm)', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }} title="Delete Workflow">
                   <Trash2 size={16} style={{marginRight: '8px'}} /> Delete Workflow
@@ -174,19 +255,19 @@ export default function WorkflowStudio() {
 
       {/* FULL SCREEN MODAL FOR N8N STYLE EDITOR */}
       {showAddForm && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--bg-panel)', zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: '#f9fafb', zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
           {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: 'var(--bg-main)', borderBottom: '1px solid var(--border-light)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', background: '#ffffff', borderBottom: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <Layers size={24} color="var(--primary-accent)" />
+              <Layers size={24} color="#3b82f6" />
               <div>
-                <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>Workflow Studio Canvas</h2>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Design your custom agent sequence</div>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#000000', margin: 0 }}>Workflow Studio Canvas</h2>
+                <div style={{ fontSize: '13px', color: '#4b5563' }}>Design your custom agent DAG</div>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
-              <Button onClick={() => setShowAddForm(false)}>Cancel</Button>
-              <Button variant="primary" onClick={handleAddSubmit} disabled={submitting || !formData.name || formData.steps.length === 0}>
+              <Button style={{ color: '#000', border: '1px solid #ccc' }} onClick={() => setShowAddForm(false)}>Cancel</Button>
+              <Button variant="primary" onClick={handleAddSubmit} disabled={submitting || !formData.name || nodes.length < 2}>
                 {submitting ? 'Saving...' : 'Save Workflow'}
               </Button>
             </div>
@@ -196,184 +277,113 @@ export default function WorkflowStudio() {
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
             
             {/* Left Panel - Canvas */}
-            <div style={{ flex: 1, background: '#1a1a1a', position: 'relative', overflow: 'auto', padding: '40px' }}>
-              {/* Dot grid background */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundImage: 'radial-gradient(circle, #333 1px, transparent 1px)', backgroundSize: '20px 20px', opacity: 0.5, pointerEvents: 'none' }} />
-              
-              <div style={{ position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', minWidth: 'max-content' }}>
-                
-                {/* START NODE */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginRight: '40px' }}>
-                  <div style={{ width: '60px', height: '60px', borderRadius: '12px', background: 'var(--primary-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 24px rgba(230, 226, 216, 0.2)' }}>
-                    <Play size={24} color="#000" fill="#000" />
-                  </div>
-                  <div style={{ marginTop: '12px', fontSize: '12px', fontWeight: 600, color: '#fff' }}>On Prospect Trigger</div>
-                </div>
-
-                {formData.steps.map((step, index) => (
-                  <React.Fragment key={index}>
-                    {/* CONNECTOR */}
-                    <div style={{ width: '40px', height: '2px', background: 'var(--primary-accent)', position: 'relative', marginRight: '40px' }}>
-                       <div style={{ position: 'absolute', right: '-6px', top: '-4px', width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderLeft: '8px solid var(--primary-accent)' }}></div>
-                    </div>
-
-                    {/* AGENT NODE */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginRight: '40px', position: 'relative', minWidth: '220px' }}>
-                      <div 
-                        style={{ 
-                          width: '100%', 
-                          background: 'var(--bg-main)', 
-                          border: `1px solid ${step.type === 'core' ? '#3b82f6' : '#10b981'}`, 
-                          borderRadius: '8px', 
-                          padding: '16px', 
-                          boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '12px'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ padding: '6px', background: 'var(--bg-panel)', borderRadius: '6px' }}>
-                              {getAgentIcon(step.name)}
-                            </div>
-                            <div>
-                              <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{step.name}</div>
-                              <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                {step.type === 'core' ? 'System Agent' : 'Custom Agent'}
-                              </div>
-                            </div>
-                          </div>
-                          <button type="button" onClick={() => removeStep(index)} style={{ background: 'transparent', border: 'none', color: 'var(--text-tertiary)', cursor: 'pointer', padding: '4px' }}>
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                        
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.4, maxHeight: '40px', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                          {step.description}
-                        </div>
-
-                        {/* Node Input/Output Ports (Visual only) */}
-                        <div style={{ position: 'absolute', left: '-5px', top: '50%', transform: 'translateY(-50%)', width: '10px', height: '10px', background: 'var(--bg-main)', border: '2px solid var(--primary-accent)', borderRadius: '50%' }} />
-                        <div style={{ position: 'absolute', right: '-5px', top: '50%', transform: 'translateY(-50%)', width: '10px', height: '10px', background: 'var(--primary-accent)', borderRadius: '50%' }} />
-                      </div>
-                    </div>
-                  </React.Fragment>
-                ))}
-
-                {/* END CONNECTOR & NODE */}
-                {formData.steps.length > 0 && (
-                   <React.Fragment>
-                    <div style={{ width: '40px', height: '2px', background: 'var(--primary-accent)', position: 'relative', marginRight: '40px' }}>
-                       <div style={{ position: 'absolute', right: '-6px', top: '-4px', width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderLeft: '8px solid var(--primary-accent)' }}></div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'transparent', border: '2px dashed var(--text-tertiary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <div style={{ width: '20px', height: '20px', background: 'var(--text-tertiary)', borderRadius: '2px' }} />
-                      </div>
-                      <div style={{ marginTop: '12px', fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)' }}>End</div>
-                    </div>
-                   </React.Fragment>
-                )}
-
-                {formData.steps.length === 0 && (
-                   <div style={{ marginLeft: '40px', padding: '20px', border: '1px dashed var(--border-light)', borderRadius: '8px', color: 'var(--text-tertiary)', fontSize: '14px' }}>
-                     Add nodes from the sidebar →
-                   </div>
-                )}
-              </div>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <ReactFlowProvider>
+                <ReactFlow
+                  nodes={nodes}
+                  edges={edges}
+                  onNodesChange={onNodesChange}
+                  onEdgesChange={onEdgesChange}
+                  onConnect={onConnect}
+                  nodeTypes={nodeTypes}
+                  edgeTypes={edgeTypes}
+                  deleteKeyCode={['Backspace', 'Delete']}
+                  fitView
+                >
+                  <Background color="#ccc" gap={16} />
+                  <Controls />
+                </ReactFlow>
+              </ReactFlowProvider>
             </div>
 
             {/* Right Panel - Configuration & Agents */}
-            <div style={{ width: '400px', background: 'var(--bg-main)', borderLeft: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', zIndex: 20, boxShadow: '-4px 0 24px rgba(0,0,0,0.2)' }}>
+            <div style={{ width: '380px', background: '#ffffff', borderLeft: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', zIndex: 20, boxShadow: '-4px 0 24px rgba(0,0,0,0.05)' }}>
               
-              <div style={{ padding: '24px', borderBottom: '1px solid var(--border-light)' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>Workflow Settings</h3>
-                <Input 
-                  label="Workflow Name" 
-                  value={formData.name} 
-                  onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                  required 
-                  placeholder="e.g. Enterprise ICP Enrichment"
-                />
-                <Input 
-                  label="Description" 
-                  value={formData.description} 
-                  onChange={(e) => setFormData({...formData, description: e.target.value})} 
-                  placeholder="What does this workflow accomplish?"
-                  style={{ marginTop: '12px' }}
-                />
+              <div style={{ padding: '24px', borderBottom: '1px solid #e5e7eb' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#000000', marginBottom: '16px' }}>Settings</h3>
+                <div style={{ marginBottom: '12px' }}>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#000', marginBottom: '4px' }}>Workflow Name</label>
+                  <input 
+                    type="text"
+                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', color: '#000' }}
+                    value={formData.name} 
+                    onChange={(e) => setFormData({...formData, name: e.target.value})} 
+                    placeholder="e.g. Parallel Pipeline"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#000', marginBottom: '4px' }}>Description</label>
+                  <textarea 
+                    style={{ width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', color: '#000', minHeight: '60px' }}
+                    value={formData.description} 
+                    onChange={(e) => setFormData({...formData, description: e.target.value})} 
+                    placeholder="Workflow description..."
+                  />
+                </div>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '16px' }}>Nodes</h3>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#000000', marginBottom: '16px' }}>Available Agents</h3>
                 
                 <div style={{ marginBottom: '24px' }}>
-                  <h4 style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '12px', letterSpacing: '0.5px' }}>Core Agents</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: '#4b5563', marginBottom: '12px', fontWeight: 700 }}>Core Agents</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {coreAgents.map(agent => (
-                      <div key={agent.name} style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: '6px', overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', borderBottom: '1px solid var(--border-light)', background: '#1c1c1c' }}>
+                      <div key={agent.name} style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             {getAgentIcon(agent.name)}
-                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{agent.name}</span>
+                            <div>
+                              <span style={{ fontSize: '14px', fontWeight: 600, color: '#000', display: 'block' }}>{agent.name}</span>
+                              <span style={{ fontSize: '12px', color: '#6b7280', display: 'block', lineHeight: 1.3 }}>{agent.description}</span>
+                            </div>
                           </div>
-                          <Button variant="secondary" style={{ padding: '4px 8px', fontSize: '11px', height: 'auto' }} onClick={() => addStep({...agent, type: 'core'})}>
-                            Add Node
-                          </Button>
+                          <button 
+                            onClick={() => addNodeToCanvas({...agent, type: 'core'})}
+                            style={{ background: '#fff', border: '1px solid #ccc', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', color: '#000', fontWeight: 600, flexShrink: 0 }}
+                          >
+                            Add
+                          </button>
                         </div>
-                        <div style={{ padding: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                          <div style={{ marginBottom: '8px' }}>{agent.description}</div>
-                          <div style={{ display: 'flex', gap: '16px', marginTop: '12px' }}>
-                             <div style={{ flex: 1 }}>
-                               <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '4px' }}>Inputs</div>
-                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                 {(agent.inputs || []).map((inp, idx) => <span key={idx} style={{ background: '#2d2d2d', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', color: '#a3a3a3' }}>{inp}</span>)}
-                               </div>
-                             </div>
-                             <div style={{ flex: 1 }}>
-                               <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '4px' }}>Outputs</div>
-                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                 {(agent.outputs || []).map((out, idx) => <span key={idx} style={{ background: '#2d2d2d', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', color: '#a3a3a3' }}>{out}</span>)}
-                               </div>
-                             </div>
+                        {((agent.inputs && agent.inputs.length > 0) || (agent.outputs && agent.outputs.length > 0)) && (
+                          <div style={{ display: 'flex', gap: '16px', marginTop: '4px', fontSize: '11px', color: '#4b5563' }}>
+                            {agent.inputs && agent.inputs.length > 0 && (
+                              <div>
+                                <strong style={{ color: '#000' }}>In:</strong> {agent.inputs.join(', ')}
+                              </div>
+                            )}
+                            {agent.outputs && agent.outputs.length > 0 && (
+                              <div>
+                                <strong style={{ color: '#000' }}>Out:</strong> {agent.outputs.join(', ')}
+                              </div>
+                            )}
                           </div>
-                        </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <h4 style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '12px', letterSpacing: '0.5px' }}>Custom Agents</h4>
+                  <h4 style={{ fontSize: '12px', textTransform: 'uppercase', color: '#4b5563', marginBottom: '12px', fontWeight: 700 }}>Custom Agents</h4>
                   {customAgents.length === 0 ? (
-                    <div style={{ fontSize: '12px', color: 'var(--text-tertiary)', padding: '16px', background: 'var(--bg-panel)', borderRadius: '6px', textAlign: 'center' }}>
-                      No custom agents available. Create them in the Agent Hub.
+                    <div style={{ fontSize: '13px', color: '#6b7280', padding: '16px', background: '#f9fafb', borderRadius: '8px', textAlign: 'center' }}>
+                      No custom agents available.
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {customAgents.map(agent => (
-                        <div key={agent.id} style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-panel)', border: '1px solid var(--border-light)', borderRadius: '6px', overflow: 'hidden' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', borderBottom: '1px solid var(--border-light)', background: '#1c1c1c' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <Bot size={18} color="#10b981" />
-                              <span style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{agent.name}</span>
-                            </div>
-                            <Button variant="secondary" style={{ padding: '4px 8px', fontSize: '11px', height: 'auto' }} onClick={() => addStep({...agent, type: 'custom', inputs: ['prospect_data'], outputs: ['custom_insights']})}>
-                              Add Node
-                            </Button>
+                        <div key={agent.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <Bot size={16} color="#10b981" />
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#000' }}>{agent.name}</span>
                           </div>
-                          <div style={{ padding: '12px', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                            <div style={{ marginBottom: '8px' }}>{agent.description}</div>
-                            {agent.allowed_tools && agent.allowed_tools.length > 0 && (
-                               <div style={{ marginTop: '12px' }}>
-                                 <div style={{ fontSize: '10px', color: 'var(--text-tertiary)', textTransform: 'uppercase', marginBottom: '4px' }}>Tools</div>
-                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                   {agent.allowed_tools.map((tool, idx) => <span key={idx} style={{ background: '#2d2d2d', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', color: '#10b981' }}>{tool}</span>)}
-                                 </div>
-                               </div>
-                            )}
-                          </div>
+                          <button 
+                            onClick={() => addNodeToCanvas({...agent, type: 'custom'})}
+                            style={{ background: '#fff', border: '1px solid #ccc', padding: '4px 8px', borderRadius: '4px', fontSize: '12px', cursor: 'pointer', color: '#000', fontWeight: 600 }}
+                          >
+                            Add
+                          </button>
                         </div>
                       ))}
                     </div>

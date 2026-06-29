@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { prospectsService, eventsService, agentService } from '../services/api';
+import { prospectsService, agentService } from '../services/api';
 import { PageHeader, Card, Button, Badge, Modal, Input } from '../components/UI';
-import { LayoutDashboard, UserCheck, Settings, Activity, Bot, Database, Globe, Search, Plus, Terminal as TerminalIcon, Cpu, Layers, Archive, CheckCircle2, AlertTriangle, Clock, Radio, Shield } from 'lucide-react';
+import { LayoutDashboard, UserCheck, Settings, Activity, Bot, Database, Globe, Search, Plus, Terminal as TerminalIcon, Cpu, Layers, Archive, CheckCircle2, AlertTriangle, Clock, Radio, Shield, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import WorkflowGraph from '../components/WorkflowGraph';
+import LiveGraph from '../components/LiveGraph';
 import ProspectDetailPanel from '../components/ProspectDetailPanel';
 import AgentLogsPanel from '../components/AgentLogsPanel';
 
@@ -22,8 +22,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('active'); // 'active' or 'history'
   const [selectedProspectId, setSelectedProspectId] = useState(null);
 
-  // Activity Feed State
-  const [events, setEvents] = useState([]);
   
   // Custom Agents State
   const [customAgents, setCustomAgents] = useState([]);
@@ -34,21 +32,20 @@ export default function Dashboard() {
   const [streamLogs, setStreamLogs] = useState([]);
   const [currentState, setCurrentState] = useState(null);
   const logsEndRef = useRef(null);
+  const sseRef = useRef(null);
 
   const fetchProspects = async () => {
     try {
-      const [data, eventsData, agentsData, wfData] = await Promise.all([
+      const [data, agentsData, wfData] = await Promise.all([
         prospectsService.getProspects({ limit: 50 }),
-        eventsService.getEvents(),
         agentService.getAgents().catch(() => []),
         import('../services/api').then(m => m.workflowService.getWorkflows()).catch(() => [])
       ]);
       setProspects(data || []);
-      setEvents(eventsData || []);
       setCustomAgents(agentsData || []);
       setAvailableWorkflows(wfData || []);
     } catch (error) {
-      console.error('Failed to fetch prospects/events:', error);
+      console.error('Failed to fetch prospects:', error);
     } finally {
       setLoading(false);
     }
@@ -119,9 +116,12 @@ export default function Dashboard() {
     }
 
     const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    const sse = new EventSource(`${baseUrl}/api/prospects/${prospectId}/stream`);
+    if (sseRef.current) {
+      sseRef.current.close();
+    }
+    sseRef.current = new EventSource(`${baseUrl}/api/prospects/${prospectId}/stream`);
     
-    sse.onmessage = (event) => {
+    sseRef.current.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         setStreamLogs(prev => [...prev, { ts: new Date().toISOString(), agent: data.agent || 'AI', msg: data.message || event.data, type: data.type, payload: data.payload }]);
@@ -133,20 +133,35 @@ export default function Dashboard() {
       }
     };
     
-    sse.onerror = () => {
+    sseRef.current.onerror = () => {
       setStreamLogs(prev => [...prev, { ts: new Date().toISOString(), agent: 'SYSTEM', msg: 'Stream closed or connection lost.' }]);
-      sse.close();
-      setSubmitting(false);
     };
   };
 
   const closeAddForm = () => {
+    if (sseRef.current) {
+      sseRef.current.close();
+      sseRef.current = null;
+    }
     setShowAddForm(false);
     setActiveStreamId(null);
     setStreamLogs([]);
     setCurrentState(null);
     setSubmitting(false);
     fetchProspects();
+  };
+
+  const handleDeleteProspect = async (id, e) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to delete this prospect?")) return;
+    try {
+      await prospectsService.deleteProspect(id);
+      toast.success("Prospect deleted");
+      fetchProspects();
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete prospect");
+    }
   };
 
   const getStatusBadge = (status) => {
@@ -270,12 +285,19 @@ export default function Dashboard() {
             <button type="submit" style={{ display: 'none' }}></button>
           </form>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <WorkflowGraph stateLogs={streamLogs} currentState={currentState} />
-            <div style={{ display: 'flex', gap: '24px' }}>
-              <div style={{ flex: '1.2', minWidth: '400px' }}>
-                <div style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Discovered Data</div>
-                <div className="flex-col" style={{ gap: '12px', maxHeight: '400px', overflowY: 'auto', paddingRight: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '80vh', minHeight: '600px' }}>
+              <div style={{ display: 'flex', gap: '24px', flex: 1 }}>
+                
+                {/* Left Panel: DAG Live Graph */}
+                <div style={{ flex: '1', minWidth: '350px' }}>
+                  <div style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Execution DAG</div>
+                  <LiveGraph state={currentState} />
+                </div>
+
+                {/* Right Panel: Discovered Data & Logs */}
+                <div style={{ flex: '1.2', minWidth: '400px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-secondary)' }}>Discovered Data</div>
+                  <div className="flex-col" style={{ gap: '12px', paddingRight: '8px' }}>
                   
                   {/* Actionable Summary Block */}
                   <div style={{ padding: '12px', background: '#fdfaf6', borderRadius: 'var(--radius-sm)', border: '1px solid var(--primary-accent)', minHeight: '120px', wordBreak: 'break-word', overflow: 'hidden' }}>
@@ -291,12 +313,13 @@ export default function Dashboard() {
                       if (typeof summary === 'string') {
                         try { summary = JSON.parse(summary); } catch (e) { summary = { overview: summary }; }
                       }
+                      if (!summary || typeof summary !== 'object') summary = {};
                       return (
                         <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {summary.overview && <div><ReactMarkdown className="markdown-body">{"**Overview:** " + summary.overview}</ReactMarkdown></div>}
-                          {summary.strengths && <div style={{ color: 'var(--success)' }}><ReactMarkdown className="markdown-body">{"**Strengths:** " + summary.strengths}</ReactMarkdown></div>}
-                          {summary.risks && <div style={{ color: 'var(--danger)' }}><ReactMarkdown className="markdown-body">{"**Risks:** " + summary.risks}</ReactMarkdown></div>}
-                          {summary.recommendation && <div style={{ color: 'var(--primary-accent)' }}><ReactMarkdown className="markdown-body">{"**Recommendation:** " + summary.recommendation}</ReactMarkdown></div>}
+                          {summary.overview && <div><ReactMarkdown className="markdown-body">{"**Overview:** " + (typeof summary.overview === 'object' ? JSON.stringify(summary.overview) : summary.overview)}</ReactMarkdown></div>}
+                          {summary.strengths && <div style={{ color: 'var(--success)' }}><ReactMarkdown className="markdown-body">{"**Strengths:** " + (typeof summary.strengths === 'object' ? JSON.stringify(summary.strengths) : summary.strengths)}</ReactMarkdown></div>}
+                          {summary.risks && <div style={{ color: 'var(--danger)' }}><ReactMarkdown className="markdown-body">{"**Risks:** " + (typeof summary.risks === 'object' ? JSON.stringify(summary.risks) : summary.risks)}</ReactMarkdown></div>}
+                          {summary.recommendation && <div style={{ color: 'var(--primary-accent)' }}><ReactMarkdown className="markdown-body">{"**Recommendation:** " + (typeof summary.recommendation === 'object' ? JSON.stringify(summary.recommendation) : summary.recommendation)}</ReactMarkdown></div>}
                         </div>
                       );
                     })()}
@@ -322,10 +345,10 @@ export default function Dashboard() {
 
                   <div style={{ padding: '12px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
                     <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Tech Stack</div>
-                    {!currentState?.data?.tech_stack ? (
+                    {!currentState?.data?.tech_stack || !Array.isArray(currentState.data.tech_stack) ? (
                       <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '80%', animation: 'pulse 1.5s infinite' }} />
                     ) : (
-                      <div style={{ fontSize: '13px', wordWrap: 'break-word', whiteSpace: 'pre-wrap' }}>{(currentState?.data?.tech_stack || []).join(', ')}</div>
+                      <div style={{ fontSize: '13px', wordWrap: 'break-word', whiteSpace: 'pre-wrap' }}>{currentState.data.tech_stack.map(t => typeof t === 'object' ? JSON.stringify(t) : t).join(', ')}</div>
                     )}
                   </div>
                   
@@ -334,14 +357,14 @@ export default function Dashboard() {
                     {!currentState?.data?.employee_count ? (
                       <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '50%', animation: 'pulse 1.5s infinite' }} />
                     ) : (
-                      <div style={{ fontSize: '13px' }}>{currentState?.data?.employee_count}</div>
+                      <div style={{ fontSize: '13px' }}>{typeof currentState.data.employee_count === 'object' ? JSON.stringify(currentState.data.employee_count) : currentState.data.employee_count}</div>
                     )}
                   </div>
 
                   {/* Decision Makers Block */}
                   <div style={{ padding: '12px', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-light)' }}>
                     <div style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-tertiary)', marginBottom: '8px' }}>Decision Makers</div>
-                    {!currentState?.data?.contacts || currentState.data.contacts.length === 0 ? (
+                    {!currentState?.data?.contacts || !Array.isArray(currentState.data.contacts) || currentState.data.contacts.length === 0 ? (
                       <div className="flex-col" style={{ gap: '8px' }}>
                         <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '70%', animation: 'pulse 1.5s infinite' }} />
                         <div style={{ height: '16px', background: '#e6e2d8', borderRadius: '4px', width: '60%', animation: 'pulse 1.5s infinite' }} />
@@ -350,8 +373,8 @@ export default function Dashboard() {
                       <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                         {currentState.data.contacts.map((c, idx) => (
                           <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid #e6e2d8', paddingBottom: '4px', gap: '12px', flexWrap: 'wrap' }}>
-                            <span style={{ wordWrap: 'break-word' }}><strong>{c.name}</strong> ({c.title})</span>
-                            {c.email && <span style={{ color: 'var(--primary-accent)', wordBreak: 'break-all' }}>{c.email}</span>}
+                            <span style={{ wordWrap: 'break-word' }}><strong>{typeof c.name === 'object' ? JSON.stringify(c.name) : c.name}</strong> ({typeof c.title === 'object' ? JSON.stringify(c.title) : c.title})</span>
+                            {c.email && <span style={{ color: 'var(--primary-accent)', wordBreak: 'break-all' }}>{typeof c.email === 'object' ? JSON.stringify(c.email) : c.email}</span>}
                           </div>
                         ))}
                       </div>
@@ -399,10 +422,10 @@ export default function Dashboard() {
                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: isSystem ? 'var(--text-tertiary)' : 'var(--primary-accent)', marginTop: '6px' }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '2px' }}>
-                            {log.agent} <span style={{ fontWeight: 400, marginLeft: '8px' }}>{new Date(log.ts).toLocaleTimeString()}</span>
+                            {typeof log.agent === 'object' ? JSON.stringify(log.agent) : String(log.agent)} <span style={{ fontWeight: 400, marginLeft: '8px' }}>{new Date(log.ts).toLocaleTimeString()}</span>
                           </div>
                           <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.5, background: isSystem ? 'transparent' : 'var(--bg-surface)', padding: isSystem ? '0' : '10px 12px', borderRadius: 'var(--radius-sm)', border: isSystem ? 'none' : '1px solid var(--border-light)' }}>
-                            {log.msg}
+                            {typeof log.msg === 'object' ? JSON.stringify(log.msg) : String(log.msg)}
                           </div>
                         </div>
                       </div>
@@ -485,31 +508,26 @@ export default function Dashboard() {
                         {p.updated_at ? new Date(p.updated_at).toLocaleString() : 'N/A'}
                       </td>
                       <td style={{ padding: '16px 24px', textAlign: 'right' }}>
-                        {['PENDING', 'PROCESSING', 'HITL'].includes(p.status) ? (
+                        {['PENDING', 'PROCESSING', 'HITL'].includes(p.status) && (
                           <button 
                             className="btn btn-secondary" 
                             style={{ padding: '4px 12px', fontSize: '12px' }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setActiveStreamId(p.id);
                               setShowAddForm(true);
+                              startStream(p.id);
                             }}
                           >
                             <TerminalIcon size={12} style={{ marginRight: '6px' }}/> Live Feed
                           </button>
-                        ) : (
-                          <button 
-                            className="btn btn-secondary" 
-                            style={{ padding: '4px 12px', fontSize: '12px', opacity: 0.8 }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveStreamId(p.id);
-                              setShowAddForm(true);
-                            }}
-                          >
-                             View Details
-                          </button>
                         )}
+                        <button 
+                          onClick={(e) => handleDeleteProspect(p.id, e)}
+                          style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px 8px', marginLeft: '8px' }}
+                          title="Delete Prospect"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -522,27 +540,9 @@ export default function Dashboard() {
         </div>
 
         <div style={{ flex: 1 }}>
-          <Card>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', color: 'var(--text-primary)', fontWeight: 600, fontSize: '16px' }}>
-              <Radio size={18} color="var(--primary-accent)" /> Global Event Feed
-            </div>
-            {events.length === 0 ? (
-              <div style={{ fontSize: '13px', color: 'var(--text-tertiary)', textAlign: 'center', padding: '24px 0' }}>
-                No recent events.
-              </div>
-            ) : (
-              <div className="flex-col" style={{ gap: '16px' }}>
-                {events.map((ev, i) => (
-                  <div key={i} style={{ paddingBottom: '16px', borderBottom: i === events.length - 1 ? 'none' : '1px solid var(--border-light)' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginBottom: '4px' }}>{ev.time || ev.timestamp ? new Date((ev.time || ev.timestamp) * (ev.time ? 1000 : 1)).toLocaleTimeString() : 'N/A'}</div>
-                    <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{ev.type || 'Event'}: {typeof ev.payload === 'string' ? ev.payload : JSON.stringify(ev.payload || {})}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
 
-          <Card style={{ marginTop: '24px' }}>
+
+          <Card>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px', color: 'var(--text-primary)', fontWeight: 600, fontSize: '16px' }}>
               <Cpu size={18} color="var(--primary-accent)" /> Custom Agents Fleet
             </div>

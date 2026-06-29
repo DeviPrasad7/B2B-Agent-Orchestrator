@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     NEWS_API_KEY: Optional[str] = None
     GITHUB_TOKEN: Optional[str] = None
     APIFY_API_TOKEN: Optional[str] = None
+    TAVILY_API_KEY: Optional[str] = None
 
     # ── Operational tunables ─────────────────────────────────────────────
     MAX_RETRIES: int = 3

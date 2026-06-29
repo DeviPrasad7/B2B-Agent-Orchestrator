@@ -32,7 +32,7 @@ def setup_graph(toolbox, memory_service, config: dict):
     workflow.add_edge(START, "dynamic_planner")
     
     # The planner decides where to go next based on state["next_node"]
-    def route_from_planner(state: GraphState) -> str:
+    def route_from_planner(state: GraphState) -> str | list[str]:
         return state.get("next_node", "__end__")
 
     # Build the path_map dynamically – adding a new @register_agent agent

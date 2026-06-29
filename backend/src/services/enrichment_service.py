@@ -167,8 +167,50 @@ class EnrichmentService:
 
     async def fetch_rss_entries(self, url: str) -> list[dict]:
         logger.info("Fetching RSS feed", url=url)
-        return [{"title": "Acme Corp raises $50M", "summary": "Acme Corp announced series B...", "link": "http://news/1"}]
+        import httpx
+        import xml.etree.ElementTree as ET
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(url, timeout=10.0)
+                resp.raise_for_status()
+                
+            root = ET.fromstring(resp.text)
+            entries = []
+            
+            # Simple heuristic for atom or rss
+            items = root.findall(".//item") or root.findall(".//{http://www.w3.org/2005/Atom}entry")
+            for item in items[:5]:
+                title = item.findtext("title") or item.findtext("{http://www.w3.org/2005/Atom}title") or ""
+                link = item.findtext("link") or item.findtext("{http://www.w3.org/2005/Atom}link") or ""
+                summary = item.findtext("description") or item.findtext("{http://www.w3.org/2005/Atom}summary") or ""
+                entries.append({"title": title, "summary": summary, "link": link})
+            return entries
+        except Exception as e:
+            logger.warning(f"RSS fetch failed for {url}: {e}")
+            return []
 
     async def fetch_jobs(self, company: str) -> list[dict]:
         logger.info("Fetching Jobs", company=company)
-        return [{"title": "Senior Engineer", "department": "Engineering"}]
+        search_content = await self._search_web(f"{company} open roles software engineering careers")
+        if not search_content:
+             return []
+             
+        prompt = f"""
+        Extract up to 3 job openings for '{company}' from this text: {search_content}.
+        Return ONLY a JSON list of objects, where each object has a 'title' string and 'department' string.
+        If none are found, return an empty list [].
+        """
+        result_json = await self.llm_service.generate_text(prompt, fallback='[]', require_json=True, strategy="fast")
+        try:
+            data = json.loads(result_json)
+            if isinstance(data, list):
+                return data
+            elif isinstance(data, dict):
+                # Handle possible {"jobs": [...]} wrapping
+                for v in data.values():
+                    if isinstance(v, list):
+                        return v
+        except Exception as e:
+            logger.warning(f"Failed to parse jobs for {company}: {e}")
+            
+        return []

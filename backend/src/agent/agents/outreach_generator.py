@@ -69,6 +69,7 @@ Return ONLY JSON in this exact format:
             try:
                 llm_response = await self.toolbox.generate_text(
                     prompt=prompt,
+                    fallback='{"subject": "Quick question", "body": "Hi, I would love to connect."}',
                     require_json=True,
                     strategy="fast"
                 )

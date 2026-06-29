@@ -48,11 +48,12 @@ class GraphState(TypedDict):
     
     # Tracking for circuit breaking and routing
     executed_agents: Annotated[list[str], add_list]
+    dispatched_agents: Annotated[list[str], add_list]
     errors: Annotated[list[str], add_list]
     retry_counts: Annotated[dict[str, int], add_dict]
     has_conflict: bool
     tech_detection_status: str
-    next_node: str
+    next_node: str | list[str]
     last_agent: str
     simulate_failure: bool
     
@@ -63,8 +64,8 @@ class GraphState(TypedDict):
     # Trace log of all agent executions and their outputs
     execution_trace: Annotated[list[dict], add_list]
     
-    # Custom sequence of agents defined in the Workflow Studio
-    custom_workflow_steps: list[str] | None
+    # Custom DAG of agents defined in the Workflow Studio
+    custom_workflow_steps: dict[str, Any] | list[str] | None
     
     # ID of the custom workflow being used
     custom_workflow_id: str | None

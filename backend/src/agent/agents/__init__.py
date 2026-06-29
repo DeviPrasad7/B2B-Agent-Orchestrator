@@ -13,6 +13,7 @@ from .consolidation import ConsolidationNode
 from .dynamic_executor import DynamicAgentExecutorNode
 from .researcher import ResearcherNode
 from .outreach_generator import OutreachGeneratorNode
+from .ender import EnderNode
 
 __all__ = [
     "MonitorNode",
@@ -30,4 +31,5 @@ __all__ = [
     "DynamicAgentExecutorNode",
     "ResearcherNode",
     "OutreachGeneratorNode",
+    "EnderNode",
 ]

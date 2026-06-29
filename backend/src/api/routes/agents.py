@@ -31,109 +31,46 @@ async def clear_database(session: AsyncSession = Depends(get_session)):
 
 @router.get("/core")
 async def list_core_agents():
-    # Return statically defined core agents for the n8n-style workflow builder
-    return [
-        {
-            "id": "scraper_node",
-            "name": "scraper_node",
-            "description": "Scrapes the target website for firmographics and tech stack data.",
-            "inputs": ["website", "company_name"],
-            "outputs": ["firmographics", "tech_stack"],
-            "is_core": True,
-            "allowed_tools": ["WebSearch"]
-        },
-        {
-            "id": "enricher_node",
-            "name": "enricher_node",
-            "description": "Enriches contact details and validates company information.",
-            "inputs": ["firmographics"],
-            "outputs": ["enriched_data"],
-            "is_core": True,
-            "allowed_tools": ["Crunchbase", "Clearbit"]
-        },
-        {
-            "id": "score_node",
-            "name": "score_node",
-            "description": "Scores the prospect against the Ideal Customer Profile.",
-            "inputs": ["firmographics", "tech_stack", "enriched_data"],
-            "outputs": ["icp_score", "signals"],
-            "is_core": True,
-            "allowed_tools": []
-        },
-        {
-            "id": "competitor_intel_node",
-            "name": "competitor_intel_node",
-            "description": "Finds competitors and mapping based on the tech stack.",
-            "inputs": ["tech_stack"],
-            "outputs": ["competitors"],
-            "is_core": True,
-            "allowed_tools": ["WebSearch"]
-        },
-        {
-            "id": "cross_validator_node",
-            "name": "cross_validator_node",
-            "description": "Cross validates all gathered data for consistency.",
-            "inputs": ["firmographics", "competitors"],
-            "outputs": ["validation_notes", "confidence_score"],
-            "is_core": True,
-            "allowed_tools": []
-        },
-        {
-            "id": "persona_matcher_node",
-            "name": "persona_matcher_node",
-            "description": "Matches the prospect to buyer personas.",
-            "inputs": ["firmographics", "icp_score"],
-            "outputs": ["matched_personas"],
-            "is_core": True,
-            "allowed_tools": []
-        },
-        {
-            "id": "contact_finder_node",
-            "name": "contact_finder_node",
-            "description": "Finds specific contacts matching the buyer persona.",
-            "inputs": ["matched_personas", "firmographics"],
-            "outputs": ["contacts"],
-            "is_core": True,
-            "allowed_tools": ["LinkedIn", "Apollo", "EmployeeSearch"]
-        },
-        {
-            "id": "outreach_generator_node",
-            "name": "outreach_generator_node",
-            "description": "Drafts personalized outreach sequences.",
-            "inputs": ["contacts", "signals", "icp_score"],
-            "outputs": ["draft_outreach"],
-            "is_core": True,
-            "allowed_tools": []
-        },
-        {
-            "id": "summarizer_node",
-            "name": "summarizer_node",
-            "description": "Summarizes the entire prospect evaluation.",
-            "inputs": ["icp_score", "draft_outreach"],
-            "outputs": ["summary"],
-            "is_core": True,
-            "allowed_tools": []
-        },
-        {
-            "id": "hitl_gateway_node",
-            "name": "hitl_gateway_node",
-            "description": "Gatekeeper for Human-In-The-Loop review.",
-            "inputs": ["confidence_score", "validation_notes"],
-            "outputs": ["status"],
-            "is_core": True,
-            "allowed_tools": []
-        },
-        {
-            "id": "output_dispatcher_node",
-            "name": "output_dispatcher_node",
-            "description": "Dispatches the final JSON to webhooks or CRM.",
-            "inputs": ["summary", "status"],
-            "outputs": ["dispatched"],
-            "is_core": True,
-            "allowed_tools": []
-        }
-    ]
-
+    # Return dynamically defined core agents for the n8n-style workflow builder
+    core_agents = []
+    
+    # Map inputs and outputs for visual aesthetics
+    io_map = {
+        "monitor_node": (["website", "company_name"], ["firmographics", "tech_stack"]),
+        "enricher_node": (["firmographics"], ["enriched_data"]),
+        "score_node": (["firmographics", "tech_stack", "enriched_data"], ["icp_score", "signals"]),
+        "competitor_intel_node": (["tech_stack"], ["competitors"]),
+        "cross_validator_node": (["firmographics", "competitors"], ["validation_notes", "confidence_score"]),
+        "persona_matcher_node": (["firmographics", "icp_score"], ["matched_personas"]),
+        "contact_finder_node": (["matched_personas", "firmographics"], ["contacts"]),
+        "outreach_generator_node": (["contacts", "signals", "icp_score"], ["draft_outreach"]),
+        "summarizer_node": (["icp_score", "draft_outreach"], ["summary"]),
+        "hitl_gateway_node": (["confidence_score", "validation_notes"], ["status"]),
+        "output_dispatcher_node": (["summary", "status"], ["dispatched"]),
+        "consolidation_node": (["*"], ["consolidated_data"]),
+        "researcher_node": (["company_name"], ["research_data"]),
+        "ender_node": (["*"], ["summary", "status", "dispatched"]),
+    }
+    
+    try:
+        from agent.registry import registry
+        for name in registry.list_agents():
+            if name not in ["dynamic_planner_node", "dynamic_agent_executor"]:
+                desc = registry.get_description(name)
+                inputs, outputs = io_map.get(name, ([], []))
+                core_agents.append({
+                    "id": name,
+                    "name": name,
+                    "description": desc,
+                    "inputs": inputs,
+                    "outputs": outputs,
+                    "is_core": True,
+                    "allowed_tools": []
+                })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+    return core_agents
 
 @router.get("", response_model=List[CustomAgentDetail])
 async def list_agents(session: AsyncSession = Depends(get_session)):
@@ -150,7 +87,6 @@ async def list_agents(session: AsyncSession = Depends(get_session)):
         )
         for a in agents
     ]
-
 
 @router.post("", response_model=CustomAgentDetail)
 async def create_agent(agent: CustomAgentCreate, session: AsyncSession = Depends(get_session)):

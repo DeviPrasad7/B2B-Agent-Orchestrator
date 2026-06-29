@@ -53,7 +53,7 @@ class WorkflowService:
             
         async def run_workflow(configured_state: GraphState):
             logger.info("Starting workflow for prospect", thread_id=thread_id)
-            config = {"configurable": {"thread_id": thread_id}}
+            config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 100}
             try:
                 if self._app is None:
                     raise RuntimeError("WorkflowService graph app is not initialized")
@@ -95,9 +95,9 @@ class WorkflowService:
                                 })
                                 
                                 # Persist current state values to database so UI fetches aren't stuck in PENDING
-                                async with async_session() as session:
+                                async with async_session() as persist_session:
                                     from services.memory_service import MemoryService
-                                    ms = MemoryService(lambda: session)
+                                    ms = MemoryService(lambda s=persist_session: s)
                                     await ms.save_prospect_state(current_state.values)
                 
                 # Check if the graph paused due to an interrupt
@@ -127,7 +127,7 @@ class WorkflowService:
 
     async def resume_with_hitl(self, thread_id: str, decision: str, corrections: dict):
         async def run_resume():
-            config = {"configurable": {"thread_id": thread_id}}
+            config = {"configurable": {"thread_id": thread_id}, "recursion_limit": 100}
             logger.info("Resuming workflow", thread_id=thread_id, decision=decision)
             try:
                 from langgraph.types import Command

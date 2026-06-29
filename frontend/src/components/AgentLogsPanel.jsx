@@ -97,7 +97,7 @@ export default function AgentLogsPanel({ agent, onClose }) {
                <div key={idx} style={{ display: 'flex', gap: '12px', fontFamily: '"Fira Code", monospace', fontSize: '13px', lineHeight: 1.4 }}>
                  <span style={{ color: '#555', flexShrink: 0 }}>[{timeStr}]</span>
                  <span style={{ color: levelColor, width: '45px', flexShrink: 0 }}>{log.level}</span>
-                 <span style={{ color: '#d4d4d4', wordBreak: 'break-word' }}>{log.message}</span>
+                 <span style={{ color: '#d4d4d4', wordBreak: 'break-word' }}>{typeof log.message === 'object' ? JSON.stringify(log.message) : String(log.message)}</span>
                </div>
              );
           })}

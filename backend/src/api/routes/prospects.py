@@ -91,6 +91,7 @@ async def create_prospect(
         "overall_status": "PENDING",
         "human_override_payload": None,
         "executed_agents": [],
+        "dispatched_agents": [],
         "errors": [],
         "has_conflict": False,
         "tech_detection_status": "PENDING",
@@ -114,6 +115,26 @@ async def create_prospect(
 
     return {"status": "success", "prospect_id": prospect_id}
 
+
+@router.delete("/{prospect_id}", status_code=204)
+async def delete_prospect(prospect_id: str, memory_service: MemoryService = Depends(get_memory_service)):
+    from models.database import async_session, Prospect
+    from sqlalchemy import select
+    try:
+        import uuid
+        pid = uuid.UUID(prospect_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid prospect ID format")
+    
+    async with async_session() as session:
+        result = await session.execute(select(Prospect).where(Prospect.id == pid))
+        prospect = result.scalar_one_or_none()
+        if not prospect:
+            raise HTTPException(status_code=404, detail="Prospect not found")
+        
+        await session.delete(prospect)
+        await session.commit()
+    return {"status": "success"}
 
 @router.get("/{prospect_id}/stream")
 async def stream_prospect_events(request: Request, prospect_id: str):

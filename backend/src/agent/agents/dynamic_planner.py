@@ -51,45 +51,118 @@ class DynamicPlannerNode(AgentNode):
                 "recent_thoughts": [f"Simulating failure, forcing retry on {last_agent}"]
             }
             
-        # 2. Custom Workflow Enforcement
+        # 2. Custom Workflow Enforcement (DAG Routing)
         custom_workflow_steps = state.get("custom_workflow_steps")
         if custom_workflow_steps:
-            # Find the first step in the sequence that hasn't been successfully completed
-            next_step = None
-            for step in custom_workflow_steps:
-                if step not in executed:
-                    next_step = step
-                    break
+            if isinstance(custom_workflow_steps, dict) and "nodes" in custom_workflow_steps:
+                nodes = custom_workflow_steps.get("nodes", [])
+                edges = custom_workflow_steps.get("edges", [])
+                
+                dispatched = set(state.get("dispatched_agents", []))
+                
+                # Fetch custom agent names to handle dynamic_agent_executor routing
+                custom_agent_names = []
+                try:
+                    from models.database import async_session, CustomAgent
+                    from sqlalchemy import select
+                    async with async_session() as session:
+                        result = await session.execute(select(CustomAgent))
+                        custom_agents = result.scalars().all()
+                        custom_agent_names = [ca.name for ca in custom_agents]
+                except Exception as e:
+                    logger.error("Failed to fetch custom agents", error=str(e))
+                
+                def are_dependencies_met(node_id: str) -> bool:
+                    incoming_edges = [e for e in edges if e.get("target") == node_id]
+                    for edge in incoming_edges:
+                        source_id = edge.get("source")
+                        source_node = next((n for n in nodes if n.get("id") == source_id), None)
+                        if not source_node:
+                            continue
+                        agent_name = source_node.get("data", {}).get("agentId")
+                        if agent_name not in executed:
+                            return False
+                    return True
                     
-            if not next_step:
-                logger.info("DynamicPlanner: Custom workflow complete.", prospect_id=prospect_id)
-                # Workflow complete, default to summary or end depending on what step we are at
-                return {"executed_agents": ["dynamic_planner_node"], "next_node": "__end__"}
+                next_agents_to_run = []
+                new_dispatched = []
                 
-            logger.info(f"DynamicPlanner: Following custom workflow, routing to {next_step}", prospect_id=prospect_id)
-            
-            # Check if this is a custom agent
-            try:
-                from models.database import async_session, CustomAgent
-                from sqlalchemy import select
-                async with async_session() as session:
-                    result = await session.execute(select(CustomAgent).where(CustomAgent.name == next_step))
-                    ca = result.scalar_one_or_none()
-                    if ca:
-                        return {
-                            "executed_agents": ["dynamic_planner_node", next_step],
-                            "next_node": "dynamic_agent_executor",
-                            "next_custom_agent": next_step,
-                            "recent_thoughts": [f"Routing to custom agent {next_step} as defined in workflow"]
-                        }
-            except Exception as e:
-                logger.error("Failed to fetch custom agent", error=str(e))
+                for node in nodes:
+                    node_id = node.get("id")
+                    agent_name = node.get("data", {}).get("agentId")
+                    
+                    if not agent_name or agent_name in executed or agent_name in dispatched:
+                        continue
+                        
+                    if are_dependencies_met(node_id):
+                        next_agents_to_run.append(agent_name)
+                        new_dispatched.append(agent_name)
                 
-            return {
-                "executed_agents": ["dynamic_planner_node"],
-                "next_node": next_step,
-                "recent_thoughts": [f"Routing to {next_step} as defined in custom workflow"]
-            }
+                if not next_agents_to_run:
+                    # If everything is executed, we are done. Note: len(nodes) might include empty nodes, so count valid agents
+                    valid_agents_count = len([n for n in nodes if n.get("data", {}).get("agentId")])
+                    if len(executed) >= valid_agents_count:
+                        logger.info("DynamicPlanner: Custom workflow complete.", prospect_id=prospect_id)
+                        return {"executed_agents": ["dynamic_planner_node"], "next_node": "__end__"}
+                    else:
+                        logger.info("DynamicPlanner: Waiting for pending agents...", prospect_id=prospect_id)
+                        return {"executed_agents": ["dynamic_planner_node"], "next_node": []}
+                        
+                logger.info(f"DynamicPlanner: Dispatching parallel nodes: {next_agents_to_run}", prospect_id=prospect_id)
+                
+                dispatch_nodes = []
+                next_ca = None
+                for ag in next_agents_to_run:
+                    if ag in custom_agent_names:
+                        if next_ca is None:
+                            next_ca = ag
+                            dispatch_nodes.append("dynamic_agent_executor")
+                        else:
+                            # Only run one custom agent at a time in parallel to avoid next_custom_agent race condition
+                            new_dispatched.remove(ag)
+                    else:
+                        dispatch_nodes.append(ag)
+                        
+                return {
+                    "executed_agents": ["dynamic_planner_node"],
+                    "dispatched_agents": new_dispatched,
+                    "next_node": dispatch_nodes,
+                    "next_custom_agent": next_ca if next_ca else state.get("next_custom_agent"),
+                    "recent_thoughts": [f"Dispatching parallel: {dispatch_nodes}"]
+                }
+            else:
+                # Fallback for old linear custom workflows
+                next_step = None
+                for step in custom_workflow_steps:
+                    if step not in executed:
+                        next_step = step
+                        break
+                        
+                if not next_step:
+                    return {"executed_agents": ["dynamic_planner_node"], "next_node": "__end__"}
+                    
+                custom_agent_names = []
+                try:
+                    from models.database import async_session, CustomAgent
+                    from sqlalchemy import select
+                    async with async_session() as session:
+                        result = await session.execute(select(CustomAgent))
+                        custom_agent_names = [ca.name for ca in result.scalars().all()]
+                except Exception as e:
+                    pass
+                    
+                if next_step in custom_agent_names:
+                    return {
+                        "executed_agents": ["dynamic_planner_node", next_step],
+                        "next_node": "dynamic_agent_executor",
+                        "next_custom_agent": next_step,
+                        "recent_thoughts": [f"Routing to custom agent {next_step}"]
+                    }
+                return {
+                    "executed_agents": ["dynamic_planner_node"],
+                    "next_node": next_step,
+                    "recent_thoughts": [f"Routing to {next_step}"]
+                }
 
         # 3. Prepare context for the LLM
         agents = self.registry.list_agents_with_descriptions()
