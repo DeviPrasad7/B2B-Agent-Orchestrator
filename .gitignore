@@ -95,3 +95,6 @@ logs/
 Plan/
 *.tmp
 *.bak
+
+# ── Hackathon ────────────────────────────────────────────────────────────
+hackathon_submission/
