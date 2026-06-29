@@ -43,7 +43,7 @@ The **Ideal Customer Profile (ICP) Agent** is a production-grade, multi-agent AI
 
 What sets this platform apart is its **dynamic orchestration layer**. Rather than relying on static, hardcoded pipelines, the system employs an LLM-powered Dynamic Planner that inspects the current workflow state and intelligently selects the next agent to execute based on accumulated data, missing signals, and configured ICP criteria. This approach enables the pipeline to adapt in real-time, re-route on failure, and even execute agents in parallel when dependency graphs allow.
 
-The platform is designed with a **defense-in-depth reliability model**. Every agent is wrapped in a `SafeAgentWrapper` that provides fault isolation, automatic retry tracking, and execution tracing. External service calls are protected by a three-state circuit breaker (CLOSED, OPEN, HALF_OPEN). Event ingestion follows the outbox pattern with orphan cleanup to guarantee exactly-once processing semantics. Human-in-the-loop governance ensures that no prospect moves to outreach without configurable approval gates.
+The platform is designed with a **defense-in-depth reliability model**, augmented by stochastic mathematical models and heuristic optimization functions. Every agent is wrapped in a `SafeAgentWrapper` that provides fault isolation, automatic retry tracking, and execution tracing. External service calls are protected by a three-state circuit breaker (CLOSED, OPEN, HALF_OPEN) featuring heuristic decision scoring to validate state transitions. Event ingestion follows the outbox pattern with orphan cleanup to guarantee exactly-once processing semantics, while LLM outputs pass through strict regex sanitization pipelines to ensure data integrity. Human-in-the-loop governance ensures that no prospect moves to outreach without configurable approval gates.
 
 ---
 
@@ -396,7 +396,7 @@ Request --> Groq Pool [model_1, model_2, ..., model_n]
 | [Class Diagram](backend/CLASS_DIAGRAM.md) | 600+ | UML class diagrams, inheritance hierarchies, protocol interfaces, composition |
 | [Sequence Flow](backend/SEQUENCE_FLOW.md) | 600+ | End-to-end sequence diagrams for all major workflows |
 | [SOLID Principles](backend/SOLID_PRINCIPLES.md) | 600+ | Concrete SOLID implementation analysis with code references |
-| [Agentic Reliability](backend/RELIABILITY.md) | 600+ | Circuit breakers, retry logic, outbox pattern, graceful degradation |
+| [Agentic Reliability](backend/RELIABILITY.md) | 650+ | Circuit breakers, heuristic functions, stochastic models, regex sanitization, outbox pattern |
 | [Agentic Flow](backend/AGENTIC_FLOW.md) | 600+ | Dynamic planning, state management, parallel execution, custom DAGs |
 | [Low-Level Design](backend/LLD_ARCHITECTURE.md) | 600+ | Data models, state machines, DTOs, schema validation, database design |
 | [Application Flow](backend/APPLICATION_FLOW.md) | 600+ | Bootstrap, request handling, agent execution, real-time event delivery |

@@ -10,7 +10,7 @@
 <h1 align="center">Backend Architecture</h1>
 
 <p align="center">
-  <strong>A production-hardened, SOLID-compliant Python backend powering an enterprise multi-agent AI orchestration platform for B2B prospect qualification.</strong>
+  <strong>A production-hardened, SOLID-compliant Python backend powered by heuristic algorithms and stochastic reliability models for an enterprise multi-agent AI orchestration platform for B2B prospect qualification.</strong>
 </p>
 
 ---
@@ -127,7 +127,7 @@ The backend is built on four foundational engineering principles:
 
 **3. State-as-Data-Bus** -- The `GraphState` TypedDict serves as an immutable data contract between all agents. It uses `Annotated` types with custom reducer functions to safely merge updates from parallel execution branches, eliminating an entire class of concurrency bugs.
 
-**4. Defense-in-Depth Reliability** -- Every external call is protected by a circuit breaker. Every agent is wrapped in fault-isolation. Event processing uses the outbox pattern. LLM calls have multi-provider failover with round-robin rotation. The system is designed to gracefully degrade rather than catastrophically fail.
+**4. Defense-in-Depth Reliability** -- Every external call is protected by a circuit breaker guided by heuristic state scoring. Every agent is wrapped in fault-isolation evaluated via stochastic mathematical equations. Event processing uses the outbox pattern backed by strict regex data sanitization pipelines. LLM calls have multi-provider failover with round-robin rotation. The system is designed to gracefully degrade rather than catastrophically fail.
 
 ---
 

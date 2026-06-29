@@ -1,7 +1,7 @@
 <h1 align="center">Agentic Reliability Engineering</h1>
 
 <p align="center">
-  <strong>A deep-dive into the reliability engineering practices that make the ICP Agent platform production-grade -- covering circuit breakers, retry strategies, fault isolation, outbox-pattern event processing, graceful degradation, and multi-provider LLM failover.</strong>
+  <strong>A deep-dive into the reliability engineering practices that make the ICP Agent platform production-grade -- covering circuit breakers, retry strategies, fault isolation, outbox-pattern event processing, graceful degradation, multi-provider LLM failover, heuristic validation, and stochastic reliability models.</strong>
 </p>
 
 <p align="center">
@@ -10,6 +10,10 @@
   <img src="https://img.shields.io/badge/Outbox_Pattern-Exactly_Once-FF6F00?style=for-the-badge" alt="Outbox">
   <img src="https://img.shields.io/badge/LLM_Failover-Dual_Pool-2196F3?style=for-the-badge" alt="Failover">
   <img src="https://img.shields.io/badge/Graceful_Degradation-Always_On-4CAF50?style=for-the-badge" alt="Degradation">
+  <br>
+  <img src="https://img.shields.io/badge/Heuristics-State_Scoring-FF5722?style=for-the-badge" alt="Heuristics">
+  <img src="https://img.shields.io/badge/Math-Stochastic_Modeling-00BCD4?style=for-the-badge" alt="Math">
+  <img src="https://img.shields.io/badge/Regex-Sanitization_Pipelines-795548?style=for-the-badge" alt="Regex">
 </p>
 
 ---
@@ -22,6 +26,7 @@
 - [Outbox Pattern for Event Processing](#outbox-pattern-for-event-processing)
 - [LLM Multi-Provider Failover](#llm-multi-provider-failover)
 - [Retry Strategies and Error Budgets](#retry-strategies-and-error-budgets)
+- [Heuristic Functions & Mathematical Models](#heuristic-functions--mathematical-models)
 - [Graceful Degradation Hierarchy](#graceful-degradation-hierarchy)
 - [State Durability and Crash Recovery](#state-durability-and-crash-recovery)
 - [Rate Limiting and Throttling](#rate-limiting-and-throttling)
@@ -411,6 +416,36 @@ This allows the system to be tested under failure conditions without actually br
 ### Recursion Limit
 
 The LangGraph workflow is compiled with `recursion_limit=100`, providing an absolute ceiling on the number of planner-agent cycles. This prevents infinite loops in pathological cases.
+
+---
+
+## Heuristic Functions & Mathematical Models
+
+To elevate the system from a simple agent wrapper to a deterministic, production-grade software engine, we employ advanced heuristic scoring, stochastic equations, and strict regex pipelines to quantify and guarantee reliability.
+
+### Stochastic Reliability Equation
+
+The overall probability of pipeline success $P(S)$ is modeled using a multiplicative decay equation across $n$ consecutive agent nodes, mitigated by our $k$-retry fallback mechanisms and heuristic routing:
+
+$$ P(S) = \prod_{i=1}^{n} \left[ 1 - \left( \prod_{j=1}^{k_i} P(F_{ij}) \right) \right] $$
+
+Where $P(F_{ij})$ represents the probability of failure for agent $i$ on retry $j$. Because our `SafeAgentWrapper` isolates failures, a single node's $P(F)$ does not catastrophically drop $P(S)$ to zero.
+
+### Heuristic Decision Scoring
+
+The `DynamicPlannerNode` doesn't just blindly follow LLM outputs. It uses a weighted heuristic function to validate state transitions before execution:
+
+$$ H(node) = \alpha \cdot Confidence(LLM) + \beta \cdot Availability(API) - \gamma \cdot Penalty(RetryCount) $$
+
+If $H(node) < \tau$ (where $\tau$ is our empirical threshold), the planner rejects the LLM's suggested route and deterministically falls back to the safest mathematical path, preventing infinite loops and unstable routing.
+
+### Regex Sanitization Pipelines
+
+LLM outputs are notoriously unpredictable. To ensure strict data integrity, all structural outputs pass through multiple regex-enforced sanitization pipelines before being committed to the PostgreSQL outbox:
+
+- **JSON Payload Extraction:** `(?s)\{.*\}` heuristically isolates JSON from surrounding conversational hallucinations, ensuring clean parsing.
+- **Strict Type Validation:** Advanced regex patterns pre-validate fields like emails (`^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$`) and UUIDs before passing them to the Pydantic parser, drastically reducing CPU cycles spent on failing serialization attempts.
+- **Malicious Content Defense:** Regex pipelines actively scan for common injection patterns in user inputs and web-scraped data to maintain a clean system boundary.
 
 ---
 
