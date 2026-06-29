@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PageHeader, Button, Card, Badge, Modal, Input } from '../components/UI';
-import { Plus, Zap, Activity, Cpu, Database, Search, Trash2 } from 'lucide-react';
+import { Plus, Zap, Activity, Cpu, Database, Search, Trash2, Workflow } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { agentService } from '../services/api';
 import AgentLogsPanel from '../components/AgentLogsPanel';
@@ -103,18 +103,6 @@ const coreAgents = [
     actionLabel: 'Manage Custom Agents',
     actionRoute: '/custom-agents'
   },
-  {
-    id: 'workflow-studio',
-    name: 'Workflow Studio',
-    role: 'Orchestration Builder',
-    description: 'Build, name, and use custom sequences of agents. Connect your custom agents into a tailored pipeline.',
-    tools: ['Visual Builder', 'Pipeline Routing'],
-    icon: <Database size={12} style={{ marginRight: '4px' }}/>,
-    visual: <CoreBot />,
-    isCore: true,
-    actionLabel: 'Open Studio',
-    actionRoute: '/workflow-studio'
-  }
 ];
 
 export default function AgentHub() {
@@ -128,6 +116,11 @@ export default function AgentHub() {
       <PageHeader 
         title="Agent Directory" 
         description="Monitor and manage the autonomous agents executing tasks in your workspace."
+        actions={
+          <Button variant="primary" icon={<Workflow size={16} />} onClick={() => navigate('/workflow-studio')}>
+            Open Workflow Studio
+          </Button>
+        }
       />
 
       {loading ? (
