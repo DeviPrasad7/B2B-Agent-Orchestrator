@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/workflows", tags=["workflows"])
 class WorkflowCreate(BaseModel):
     name: str
     description: Optional[str] = None
-    steps: List[str]
+    steps: Any
 
 class WorkflowDetail(WorkflowCreate):
     id: uuid.UUID

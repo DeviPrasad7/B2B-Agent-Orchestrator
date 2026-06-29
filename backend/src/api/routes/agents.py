@@ -36,7 +36,8 @@ async def list_core_agents():
     
     # Map inputs and outputs for visual aesthetics
     io_map = {
-        "monitor_node": (["website", "company_name"], ["firmographics", "tech_stack"]),
+        "monitor_node": (["website", "company_name"], ["firmographics"]),
+        "tech_stack_detector_node": (["website", "company_name"], ["tech_stack"]),
         "enricher_node": (["firmographics"], ["enriched_data"]),
         "score_node": (["firmographics", "tech_stack", "enriched_data"], ["icp_score", "signals"]),
         "competitor_intel_node": (["tech_stack"], ["competitors"]),

@@ -45,23 +45,56 @@ const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, ta
 };
 
 // Custom Node for rendering agents in the graph
-const AgentNode = ({ data }) => {
+const AgentNode = ({ id, data }) => {
   const isEnder = data.agentId === 'ender_node';
-  const borderColor = isEnder ? '#ef4444' : (data.type === 'core' ? '#3b82f6' : '#10b981');
-  
+  const isStart = data.agentId === 'start';
+  const borderColor = isEnder ? '#ef4444' : (isStart ? '#f59e0b' : (data.type === 'core' ? '#3b82f6' : '#10b981'));
+  const bgColor = isStart ? '#fffbeb' : '#ffffff';
+  const { setNodes, setEdges } = useReactFlow();
+
+  const onDeleteClick = (evt) => {
+    evt.stopPropagation();
+    setNodes((nds) => nds.filter((n) => n.id !== id));
+    setEdges((eds) => eds.filter((e) => e.source !== id && e.target !== id));
+  };
+
+  const handleStyle = { 
+    width: '24px', 
+    height: '24px', 
+    background: borderColor, 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    color: '#fff', 
+    fontSize: '16px', 
+    fontWeight: 'bold',
+    cursor: 'crosshair',
+    border: '2px solid #fff'
+  };
+
   return (
-    <div style={{ background: '#ffffff', border: `2px solid ${borderColor}`, borderRadius: '12px', padding: '16px', minWidth: '220px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', color: '#000000' }}>
-      {data.agentId !== 'start' && <Handle type="target" position={Position.Left} style={{ width: '12px', height: '12px', background: borderColor }} />}
+    <div style={{ background: bgColor, border: `2px solid ${borderColor}`, borderRadius: '12px', padding: isStart ? '24px' : '16px', minWidth: isStart ? '260px' : '220px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', color: '#000000', position: 'relative' }}>
+      {!isEnder && !isStart && (
+        <button 
+          onClick={onDeleteClick}
+          style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', zIndex: 10 }}
+          title="Delete Agent"
+        >
+          <X size={12} strokeWidth={3} />
+        </button>
+      )}
+      
+      {!isStart && <Handle type="target" position={Position.Left} style={{...handleStyle, left: '-12px'}} />}
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-        <div style={{ fontWeight: 700, fontSize: '15px', color: '#000000' }}>{data.label}</div>
+        <div style={{ fontWeight: 700, fontSize: isStart ? '18px' : '15px', color: '#000000' }}>{data.label}</div>
       </div>
       
-      <div style={{ fontSize: '12px', color: '#4b5563', lineHeight: 1.4 }}>
+      <div style={{ fontSize: isStart ? '14px' : '12px', color: '#4b5563', lineHeight: 1.4 }}>
         {data.description}
       </div>
       
-      {!isEnder && data.agentId !== 'start' && <Handle type="source" position={Position.Right} style={{ width: '12px', height: '12px', background: borderColor }} />}
+      {!isEnder && <Handle type="source" position={Position.Right} style={{...handleStyle, right: '-12px'}}>+</Handle>}
     </div>
   );
 };
@@ -71,6 +104,46 @@ const nodeTypes = {
 };
 const edgeTypes = {
   custom: CustomEdge,
+};
+
+const WorkflowStepsList = ({ nodes }) => {
+  if (!nodes || nodes.length === 0) return null;
+  
+  // Sort nodes roughly by X position to simulate flow order
+  const sortedNodes = [...nodes].sort((a, b) => (a.position?.x || 0) - (b.position?.x || 0));
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', marginBottom: '16px', padding: '12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+      {sortedNodes.map((node, idx) => {
+        const isStart = node.data?.agentId === 'start';
+        const isEnder = node.data?.agentId === 'ender_node';
+        
+        const bgColor = isStart ? '#fffbeb' : (isEnder ? '#fef2f2' : '#eff6ff');
+        const textColor = isStart ? '#b45309' : (isEnder ? '#b91c1c' : '#1d4ed8');
+        const borderColor = isStart ? '#fcd34d' : (isEnder ? '#fca5a5' : '#bfdbfe');
+
+        return (
+          <React.Fragment key={node.id}>
+            <div style={{
+              padding: '4px 10px',
+              background: bgColor,
+              color: textColor,
+              border: `1px solid ${borderColor}`,
+              borderRadius: '16px',
+              fontSize: '11px',
+              fontWeight: 600,
+              whiteSpace: 'nowrap'
+            }}>
+              {node.data?.label || node.id}
+            </div>
+            {idx < sortedNodes.length - 1 && (
+              <div style={{ color: '#cbd5e1', fontSize: '14px', fontWeight: 'bold' }}>→</div>
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
 };
 
 export default function WorkflowStudio() {
@@ -118,10 +191,9 @@ export default function WorkflowStudio() {
       setNodes([
         { 
           id: 'start', 
-          type: 'input', 
-          data: { label: 'On Prospect Trigger', description: 'Starts the workflow when a prospect is added.' }, 
-          position: { x: 50, y: 200 },
-          style: { background: '#f59e0b', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '8px', padding: '16px' }
+          type: 'agentNode', 
+          data: { agentId: 'start', type: 'trigger', label: 'On Prospect Trigger', description: 'Starts the workflow when a prospect is added.' }, 
+          position: { x: 50, y: 200 }
         },
         { 
           id: 'ender_1', 
@@ -141,11 +213,6 @@ export default function WorkflowStudio() {
 
   const handleAddSubmit = async (e) => {
     e.preventDefault();
-    if (nodes.length < 2) {
-      toast.error("Please add at least one agent to the workflow.");
-      return;
-    }
-    
     setSubmitting(true);
     try {
       await workflowService.createWorkflow({
@@ -235,6 +302,10 @@ export default function WorkflowStudio() {
                 </div>
               </div>
 
+              {workflow.steps?.nodes && (
+                <WorkflowStepsList nodes={workflow.steps.nodes} />
+              )}
+
               <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px', fontFamily: '"Source Serif 4", serif' }}>
                 {workflow.name}
               </h3>
@@ -267,7 +338,7 @@ export default function WorkflowStudio() {
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
               <Button style={{ color: '#000', border: '1px solid #ccc' }} onClick={() => setShowAddForm(false)}>Cancel</Button>
-              <Button variant="primary" onClick={handleAddSubmit} disabled={submitting || !formData.name || nodes.length < 2}>
+              <Button variant="primary" onClick={handleAddSubmit} disabled={submitting || !formData.name}>
                 {submitting ? 'Saving...' : 'Save Workflow'}
               </Button>
             </div>
