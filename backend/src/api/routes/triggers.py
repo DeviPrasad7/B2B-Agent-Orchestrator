@@ -78,3 +78,8 @@ async def stop_monitor(request: Request):
     monitor = request.app.state.trigger_monitor
     monitor.stop()
     return {"status": "success", "message": "TriggerMonitor stopped"}
+
+@router.get("/status")
+async def get_monitor_status(request: Request):
+    monitor = request.app.state.trigger_monitor
+    return {"running": monitor._running}

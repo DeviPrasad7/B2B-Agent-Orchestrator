@@ -30,7 +30,7 @@ class GitHubAPIProvider(BaseAPIProvider):
 
         params = {
             "q": query,
-            "sort": config.get("sort", "stars"),
+            "sort": config.get("sort", "updated"),
             "order": config.get("order", "desc"),
             "per_page": 3 # Aggressively limit results to save free-tier LLM bandwidth
         }

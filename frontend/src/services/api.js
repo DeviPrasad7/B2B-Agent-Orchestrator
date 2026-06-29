@@ -55,5 +55,6 @@ export const triggerService = {
   deleteSource: async (id) => (await api.delete(`/api/triggers/sources/${id}`)).data,
   start: async () => (await api.post('/api/triggers/start')).data,
   stop: async () => (await api.post('/api/triggers/stop')).data,
+  getStatus: async () => (await api.get('/api/triggers/status')).data,
 };
 

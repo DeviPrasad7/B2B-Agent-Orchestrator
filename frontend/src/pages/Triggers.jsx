@@ -22,8 +22,18 @@ export default function Triggers() {
     }
   };
 
+  const fetchStatus = async () => {
+    try {
+      const data = await triggerService.getStatus();
+      setMonitorActive(data.running);
+    } catch (error) {
+      console.error('Failed to fetch monitor status:', error);
+    }
+  };
+
   useEffect(() => {
     fetchSources();
+    fetchStatus();
   }, []);
 
   const handleStartMonitor = async () => {
